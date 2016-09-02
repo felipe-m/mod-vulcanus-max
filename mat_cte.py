@@ -59,11 +59,11 @@ car_z = 10.5
     -----------
 """
 
-e3dv6_in_diam = 12
-e3dv6_in_h = 6
-e3dv6_out_diam = 16
-e3dv6_outup_h = 3.7
-e3dv6_outbot_h = 3
+E3DV6_IN_DIAM = 12
+E3DV6_IN_H = 6
+E3DV6_OUT_DIAM = 16
+E3DV6_OUTUP_H = 3.7
+E3DV6_OUTBOT_H = 3
 
 # separation of the extruders.
 # with the fan, the extruder are about 30mm wide. So 15mm from the center.
@@ -73,10 +73,10 @@ extrud_sep = 40
 
 # DIN-912 bolt dimmensions
 # head: the index is the M, i.e: M3, M4, ..., the value is the diameter of the head of the bolt
-d912_head_d = {3: 5.5, 4: 7, 5: 8.5, 6:10, 8:13, 10:18} 
+D912_HEAD_D = {3: 5.5, 4: 7, 5: 8.5, 6:10, 8:13, 10:18} 
 # length: the index is the M, i.e: M3, M4, ..., the value is the length of the head of the bolt
 # well, it is the same as the M, never mind...
-d912_head_l =  {3: 3,   4: 4, 5: 5,   6:6,  8:8,  10:10} 
+D912_HEAD_L =  {3: 3,   4: 4, 5: 5,   6:6,  8:8,  10:10} 
 
 
 # tightening bolt with added tolerances:
