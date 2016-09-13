@@ -20,35 +20,6 @@ LME10UU_BEARING_L = 29.0; #the length of the bearing
 LME10UU_BEARING_D = 19.0; #diamenter of the bearing
 
 
-# Carriage inner rectangle (for the hot end)
-inrect_x = 36.0
-inrect_y = 20.0
-# separation between inner rectangles, and also to the end of the piece
-inrect_xsep = 12.0
-
-# carriage total x dimension:
-car_x = 2.0 * inrect_x + 3 * inrect_xsep
-
-# radius for the fillet of 4 corners of the carriage
-car_fllt_r = 4.0
-
-# The diameter of the rods is 10
-rod_diam = 10.0;
-# Add 2 mm, because it is just to leave space for the rod
-# and hold the linear bearings
-rod_diam_space = rod_diam + 2.0
-
-# Separation between the rods axis (Y dimension)
-rod_sep = 50.0
-
-# Distance between the rod axis to the end (it has to be larger than the 
-# radius of the bearing
-
-dist_rodax_end = 20.0
-
-car_y = rod_sep + dist_rodax_end
-
-car_z = 10.5
 
 # E3D V6 extrusor dimensions
 """
