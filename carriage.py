@@ -285,8 +285,8 @@ M3_SHANK_R_TOL = BOLT_R / 2.0 + TOL/2.0
 
 M3_NUT_R = mat_cte.NUT_D934_D[BOLT_R] / 2.0
 M3_NUT_L = mat_cte.NUT_D934_L[BOLT_R] + TOL
-# full TOL because diameter values are minimum, so they may be larger
-M3_NUT_R_TOL = M3_NUT_R + TOL 
+#  1.5 TOL because diameter values are minimum, so they may be larger
+M3_NUT_R_TOL = M3_NUT_R + 1.5*TOL
 
 m3bolts = []
 for i in range (0, 7):
@@ -333,7 +333,7 @@ for i in range (0, 7):
                     ____     
            CB_W  {  XXXX       ___
            CB_IW {  ____      /   \
-   1 or 2: CB_W  {  XXXX      |   |   CCYL: CLAMPCYL 
+   1 or 2: CB_MW {  XXXX      |   |   CCYL: CLAMPCYL 
            CB_IW {  ____      \___/
            CB_W  {  XXXX     
         
@@ -371,11 +371,39 @@ def add_2waybeltclamp (midblock = 1) :
     # separation between the clamp blocks and the clamp cylinder
     GT2_CS = 3.0
 
+    """
+    how much the rail is inside
+
+     ________________________________________________    
+    |        
+    |   __________________________
+     \                        ____ GT2_CBASERAILIND 
+      |       
+     /  _____ GT2_CBASE_RAIL ___
+    |
+    |_________________________ GT2_CBASE_WALL _________ GT2_CBASE_H
+
+    |-|
+      GT2_CBASERAILIND_SIG (it is 45 degrees). SIG: can be + or -
+
+    if midblock > 0 this will be the indentation, 
+    if midblock == 0 it will be outward, like this:
+        _________
+       |         |
+      /           \ 
+     |             |
+      \           /
+       |_________|
+      
+    """
   
     # Clamp base
     GT2_CBASE_H = CAR_Z
     GT2_CBASE_L = GT2_CB_L + GT2_CS + 2*GT2_CCYL_R
-    GT2_CBASE_W = 2 * GT2_CB_IW + 2 * GT2_CB_W + GT2_CB_MW
+    if midblock == 0:
+      GT2_CBASE_W =     GT2_CB_IW + 2 * GT2_CB_W 
+    else:
+      GT2_CBASE_W = 2 * GT2_CB_IW + 2 * GT2_CB_W + GT2_CB_MW
 
     # divides how much is rail and how much is wall
     # It has to be greater than 1. If it is 1, there is no wall.
@@ -385,54 +413,56 @@ def add_2waybeltclamp (midblock = 1) :
     # the part that is wall, divided by 2, because one goes at the bottom
     # and the other on top
     GT2_CBASE_WALL = (GT2_CBASE_H - GT2_CBASE_RAIL)/2.0 # rail for the base
+    # Indentation, if midblock == 0, the Indentation is negative, which means
+    # it will be outward, otherwise, inward
     GT2_CBASERAILIND = GT2_CBASE_RAIL/3.0
+    if midblock == 0:
+      GT2_CBASERAILIND_SIG = - GT2_CBASERAILIND 
+    else:
+      GT2_CBASERAILIND_SIG = GT2_CBASERAILIND 
   
+    gt2_clamp_list = []
     # we make it using points-plane and extrusions
     #gt2_base = addBox (GT2_CBASE_L, GT2_CBASE_W, GT2_CBASE_H, "gt2_base")
     gt2_cb_1 = addBox (GT2_CB_L, GT2_CB_W, GT2_C_H+1, "gt2_cb_1")
     gt2_cb_1.Placement.Base = FreeCAD.Vector (GT2_CBASE_L-GT2_CB_L,
                                               0,
                                               GT2_CBASE_H-1)
-    gt2_cb_2 = addBox (GT2_CB_L, GT2_CB_MW, GT2_C_H+1, "gt2_cb_2")
-    gt2_cb_2.Placement.Base = FreeCAD.Vector (GT2_CBASE_L-GT2_CB_L,
-		                              GT2_CB_W + GT2_CB_IW,
-		                              GT2_CBASE_H-1)
+    gt2_clamp_list.append (gt2_cb_1)
+    if midblock > 0:
+      gt2_cb_2 = addBox (GT2_CB_L, GT2_CB_MW, GT2_C_H+1, "gt2_cb_2")
+      gt2_cb_2.Placement.Base = FreeCAD.Vector (GT2_CBASE_L-GT2_CB_L,
+		                                        GT2_CB_W + GT2_CB_IW,
+		                                        GT2_CBASE_H-1)
+      gt2_clamp_list.append (gt2_cb_2)
+
     gt2_cb_3 = addBox (GT2_CB_L, GT2_CB_W, GT2_C_H + 1, "gt2_cb_3")
     gt2_cb_3.Placement.Base = FreeCAD.Vector (GT2_CBASE_L-GT2_CB_L,
-		                              GT2_CBASE_W - GT2_CB_W,
-		                              GT2_CBASE_H-1)
+		                                GT2_CBASE_W - GT2_CB_W,
+		                                GT2_CBASE_H-1)
+    gt2_clamp_list.append (gt2_cb_3)
+ 
     gt2_cyl = addCyl (GT2_CCYL_R,  GT2_C_H + 1, "gt2_cyl")
     gt2_cyl.Placement.Base = FreeCAD.Vector (GT2_CCYL_R, 
                                              GT2_CBASE_W/2,
-		                             GT2_CBASE_H-1)
+                                             GT2_CBASE_H-1)
+    gt2_clamp_list.append (gt2_cyl)
 
 
-    gt2_clamp_list = [ gt2_cb_1, gt2_cb_2, gt2_cb_3, gt2_cyl]
-    
-    """
-    how much the rail is inside
-
-     ________________________________________________    
-    |        
-    |   __________________________
-     \                        ____ GT2_CBASE_INDENT 
-      |       
-     /  _____GT2_CBASE_RAIL___
-    |
-    |_________________________GT2_CBASE_WALL_________GT2_CBASE_H
-
-    |-|
-      GT2_CBASE_INDENT (it is 45 degrees)
-    """
+ 
 
     # left side
-    gt2_base_lv00 = FreeCAD.Vector (0,0,
+    gt2_base_lv00 = FreeCAD.Vector (0,
+                                    0,
                                     0)
-    gt2_base_lv01 = FreeCAD.Vector (0,0,
+    gt2_base_lv01 = FreeCAD.Vector (0,
+                                    0,
                                     GT2_CBASE_WALL)
-    gt2_base_lv02 = FreeCAD.Vector (0,GT2_CBASERAILIND,
+    gt2_base_lv02 = FreeCAD.Vector (0,
+                                    GT2_CBASERAILIND_SIG,
                                     GT2_CBASE_WALL + GT2_CBASERAILIND)
-    gt2_base_lv03 = FreeCAD.Vector (0,GT2_CBASERAILIND,
+    gt2_base_lv03 = FreeCAD.Vector (0,
+                                    GT2_CBASERAILIND_SIG,
                                     GT2_CBASE_WALL + 2*GT2_CBASERAILIND)
     gt2_base_lv04 = FreeCAD.Vector (0,0,
                                     GT2_CBASE_WALL + GT2_CBASE_RAIL)
@@ -440,15 +470,20 @@ def add_2waybeltclamp (midblock = 1) :
                                     GT2_CBASE_H)
 
     # left side
-    gt2_base_rv00 = FreeCAD.Vector (0,GT2_CBASE_W,
+    gt2_base_rv00 = FreeCAD.Vector (0,
+                                    GT2_CBASE_W,
                                     0)
-    gt2_base_rv01 = FreeCAD.Vector (0,GT2_CBASE_W,
+    gt2_base_rv01 = FreeCAD.Vector (0,
+                                    GT2_CBASE_W,
                                     GT2_CBASE_WALL)
-    gt2_base_rv02 = FreeCAD.Vector (0,GT2_CBASE_W-GT2_CBASERAILIND,
+    gt2_base_rv02 = FreeCAD.Vector (0,
+                                    GT2_CBASE_W - GT2_CBASERAILIND_SIG,
                                     GT2_CBASE_WALL + GT2_CBASERAILIND)
-    gt2_base_rv03 = FreeCAD.Vector (0,GT2_CBASE_W-GT2_CBASERAILIND,
+    gt2_base_rv03 = FreeCAD.Vector (0,
+                                    GT2_CBASE_W - GT2_CBASERAILIND_SIG,
                                     GT2_CBASE_WALL + 2*GT2_CBASERAILIND)
-    gt2_base_rv04 = FreeCAD.Vector (0,GT2_CBASE_W,
+    gt2_base_rv04 = FreeCAD.Vector (0,
+                                    GT2_CBASE_W,
                                     GT2_CBASE_WALL + GT2_CBASE_RAIL)
     gt2_base_rv05 = FreeCAD.Vector (0,GT2_CBASE_W,
                                     GT2_CBASE_H)
@@ -485,31 +520,6 @@ def add_2waybeltclamp (midblock = 1) :
     gt2_clamp_basic.Shapes = gt2_clamp_list
 
     """
-    Not doing it using chamfers
-    # rail
-    gt2_rail_sidehole1 = addBox (GT2_CBASE_L,
-                                 GT2_CBASE_RAIL+1,
-                                 GT2_CBASE_RAIL,
-                                 "gt2_rail_sidehole1") 
-
-    gt2_rail_sidehole1_chmlist = []
-    edge_ind = 1
-    for edge_i in gt2_rail_sidehole1.Shape.Edges:
-      # we want to take the horizontal, Y+ edges
-      if ((edge_i.Length == GT2_CBASE_L) and 
-          (edge_i.Vertexes[0].Y == GT2_CBASE_RAIL+1)) :
-        gt2_rail_sidehole1_chmlist.append((edge_ind,
-                                           GT2_CBASE_RAIL/2, GT2_CBASE_RAIL/2))
-      edge_ind += 1
-    gt2_rail_sidehole1_chm = doc.addObject("Part::Chamfer",
-                                            "gt2_rail_sidehole1_chm")
-    gt2_rail_sidehole1_chm.Base = gt2_rail_sidehole1
-    gt2_rail_sidehole1_chm.Edges = gt2_rail_sidehole1_chmlist
-    gt2_rail_sidehole1_chm.Placement.Base = FreeCAD.Vector (
-                                                 0, -1, GT2_CBASE_RAIL)
-    # to hide the objects in freecad gui
-    if gt2_rail_sidehole1.ViewObject != None:
-      gt2_rail_sidehole1.ViewObject.Visibility = False
     """
 
     # hole for the leadscrew bolt
@@ -528,7 +538,7 @@ def add_2waybeltclamp (midblock = 1) :
     gt2_base_lscrew_nut.Polygon = 6
     gt2_base_lscrew_nut.Circumradius = M3_NUT_R_TOL
     # The nut height multiplier to have enough space to introduce it
-    NUT_HOLE_MULT_H = 2.5 
+    NUT_HOLE_MULT_H = 2 
     NUT_HOLE_H = NUT_HOLE_MULT_H * M3_NUT_L
     gt2_base_lscrew_nut.Height = NUT_HOLE_H 
     gt2_base_lscrew_nut.Placement = gt2_base_lscrew.Placement 
@@ -538,13 +548,14 @@ def add_2waybeltclamp (midblock = 1) :
                                    GT2_CBASE_H/2.0)
     gt2_base_lscrew_nut.Placement.Rotation = FreeCAD.Rotation (VY, 90)
     # ------------ hole to reach out the nut hole
-    M3_APOT_TOL = mat_cte.NUT_D934_2A[3] + TOL
-    # X is the length: NUT_HOLE_H. Y is the width. M3_APOT_TOL
-    gt2_base_lscrew_nut2 = addBox (NUT_HOLE_H, M3_APOT_TOL, GT2_CBASE_H/2.0,
+    #M3_2APOT_TOL = mat_cte.NUT_D934_2A[3] +  TOL
+    M3_2APOT_TOL = 2* M3_NUT_R_TOL * 0.866 # Apotheme is: R * cos(30) = 0.866
+    # X is the length: NUT_HOLE_H. Y is the width. M3_2APOT_TOL
+    gt2_base_lscrew_nut2 = addBox (NUT_HOLE_H, M3_2APOT_TOL, GT2_CBASE_H/2.0,
                                    "gt2_base_lscrew_nut2")
     gt2_base_lscrew_nut2.Placement.Base = (
                                ((GT2_CBASE_L-M3_HEAD_L) - NUT_HOLE_H)/2.0,
-                                (GT2_CBASE_W - M3_APOT_TOL)/2.0,
+                                (GT2_CBASE_W - M3_2APOT_TOL)/2.0,
                                  0)
 
     gt2_base_holes_l = [ gt2_base_lscrew,
@@ -563,10 +574,13 @@ def add_2waybeltclamp (midblock = 1) :
     """
     """
 
+"""
 gt2_clamp = add_2waybeltclamp (midblock =1)
-
 gt2_clamp.Placement.Base = FreeCAD.Vector (CAR_X / 2, 2, CAR_Z)
+"""
 
+gt2_clamp_0 = add_2waybeltclamp (midblock =0)
+gt2_clamp_0.Placement.Base = FreeCAD.Vector (CAR_X / 2, 2, CAR_Z)
 
 # --------------------------- Union of all the holes
 
