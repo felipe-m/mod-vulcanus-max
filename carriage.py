@@ -25,7 +25,7 @@ import mat_cte  # import material constants and other constants
 import mfc      # import my functions for freecad
 
 from mfc import V0, VX, VY, VZ, V0ROT, addBox, addCyl, fillet_len
-from mfc import addBolt, addBoltNut_hole
+from mfc import addBolt, addBoltNut_hole, NutHole
 from mat_cte import TOL
 
 """ ------------------- dimensions: --------------------------
@@ -39,7 +39,7 @@ CAR_FLLT_R = 4.0
 ROD_DIAM = 10.0;
 # Add 2 mm, because it is just to leave space for the rod
 # and hold the linear bearings
-rod_diam_space = ROD_DIAM + 2
+ROD_DIAM_SPACE = ROD_DIAM + 2
 
 # Separation between the rods axis (Y dimension)
 ROD_SEP = 50.0
@@ -86,6 +86,31 @@ EXTR_HOLD_FLLT_R = 2.0
 # this is the distance that the bottom of the bottom ring will be outside
 # of the carriage
 EXTR_BOT_OUT = 1.0  
+
+# constant related to bolts
+BOLT_R = 3
+M3_HEAD_R = mat_cte.D912_HEAD_D[BOLT_R] / 2.0
+M3_HEAD_L = mat_cte.D912_HEAD_L[BOLT_R] + TOL
+M3_HEAD_R_TOL = M3_HEAD_R + TOL/2.0 # smaller TOL, because it's small
+M3_SHANK_R_TOL = BOLT_R / 2.0 + TOL/2.0
+
+M3_NUT_R = mat_cte.NUT_D934_D[BOLT_R] / 2.0
+M3_NUT_L = mat_cte.NUT_D934_L[BOLT_R] + TOL
+#  1.5 TOL because diameter values are minimum, so they may be larger
+M3_NUT_R_TOL = M3_NUT_R + 1.5*TOL
+XTR_BOT_OUT = 1.0  
+
+# constant related to inserted nuts. For example, to make a leadscrew
+# The nut height multiplier to have enough space to introduce it
+NUT_HOLE_MULT_H = 1.8 
+M3NUT_HOLE_H = NUT_HOLE_MULT_H * M3_NUT_L  
+NUT_HOLE_EDGSEP = 3 # separation from the  edge
+
+#M3_2APOT_TOL = mat_cte.NUT_D934_2A[3] +  TOL
+# Apotheme is: R * cos(30) = 0.866
+M3_2APOT_TOL = 2* M3_NUT_R_TOL * 0.866
+
+
 
 # Outer up ring
 extr_outup = addCyl (r=EXTR_OUT_D/2.0, h=EXTR_OUTUP_H, name="extr_outup");
@@ -219,13 +244,13 @@ holes_list.append(inrect_fllt)
 
 # ------------------- Rod holes
 
-rod_p = addCyl(rod_diam_space/2.0, CAR_X+2, "rod_p")
+rod_p = addCyl(ROD_DIAM_SPACE/2.0, CAR_X+2, "rod_p")
 rod_p_pos = FreeCAD.Vector(-CAR_X/2.0-1, ROD_SEP/2.0, CAR_Z)
 rod_p.Placement = FreeCAD.Placement (rod_p_pos,
                                      FreeCAD.Rotation(VY,90),
                                      V0)
 
-rod_n = addCyl(rod_diam_space/2.0, CAR_X+2, "rod_n")
+rod_n = addCyl(ROD_DIAM_SPACE/2.0, CAR_X+2, "rod_n")
 rod_n_pos = FreeCAD.Vector(-CAR_X/2.0-1, -ROD_SEP/2.0, CAR_Z)
 rod_n.Placement = FreeCAD.Placement (rod_n_pos,
                                      FreeCAD.Rotation(VY,90),
@@ -277,16 +302,7 @@ for i in range (4):
 
 
 # ---------------------- adding M3 bolts
-BOLT_R = 3
-M3_HEAD_R = mat_cte.D912_HEAD_D[BOLT_R] / 2.0
-M3_HEAD_L = mat_cte.D912_HEAD_L[BOLT_R] + TOL
-M3_HEAD_R_TOL = M3_HEAD_R + TOL/2.0 # smaller TOL, because it's small
-M3_SHANK_R_TOL = BOLT_R / 2.0 + TOL/2.0
 
-M3_NUT_R = mat_cte.NUT_D934_D[BOLT_R] / 2.0
-M3_NUT_L = mat_cte.NUT_D934_L[BOLT_R] + TOL
-#  1.5 TOL because diameter values are minimum, so they may be larger
-M3_NUT_R_TOL = M3_NUT_R + 1.5*TOL
 
 m3bolts = []
 for i in range (0, 7):
@@ -314,7 +330,8 @@ for i in range (0, 7):
       m3bolt_x = -(CAR_X/2.0 - OUT_SEP/2.0)
 
   bolt_pos = FreeCAD.Vector(m3bolt_x, m3bolt_y, 0)
-  bolt.Placement = FreeCAD.Placement (bolt_pos, V0ROT, V0)
+  upsidedown = FreeCAD.Rotation (VX, 180)
+  bolt.Placement = FreeCAD.Placement (bolt_pos, upsidedown, V0)
   m3bolts.append (bolt)
 
   # substract the bolt holes to the carriage
@@ -333,7 +350,7 @@ for i in range (0, 7):
                     ____     
            CB_W  {  XXXX       ___
            CB_IW {  ____      /   \
-   1 or 2: CB_MW {  XXXX      |   |   CCYL: CLAMPCYL 
+ 0,1 or 2: CB_MW {  XXXX      |   |   CCYL: CLAMPCYL 
            CB_IW {  ____      \___/
            CB_W  {  XXXX     
         
@@ -346,7 +363,8 @@ for i in range (0, 7):
 
   arguments:
 
-  midblock: 1 or 2. It will add a none/single/double width middle block
+  midblock: 0 or 1. It will add a none/single width middle block
+                    In the future I may consider a double middle block (2)
 
 """
 
@@ -513,29 +531,26 @@ class Gt2BeltClamp:
                                             name + "_base_lscrew_nut")
         gt2_base_lscrew_nut.Polygon = 6
         gt2_base_lscrew_nut.Circumradius = M3_NUT_R_TOL
-        # The nut height multiplier to have enough space to introduce it
-        NUT_HOLE_MULT_H = 1.8 
-        NUT_HOLE_H = NUT_HOLE_MULT_H * M3_NUT_L
-        gt2_base_lscrew_nut.Height = NUT_HOLE_H 
-        gt2_base_lscrew_nut.Placement = gt2_base_lscrew.Placement 
+        gt2_base_lscrew_nut.Height = M3NUT_HOLE_H 
+        gt2_base_lscrew_nut.Placement.Rotation = \
+                                      gt2_base_lscrew.Placement.Rotation 
+                  # + TOL so it will be a little bit higher, so more room
         gt2_base_lscrew_nut.Placement.Base = FreeCAD.Vector (
-                              #(self.CBASE_L-M3_HEAD_L)/2.0 - NUT_HOLE_H/2.0,
-                               3,
+                              #(self.CBASE_L-M3_HEAD_L)/2.0 - M3NUT_HOLE_H/2.0,
+                               NUT_HOLE_EDGSEP,
                                self.CBASE_W/2.0 + self.extind,
-                               self.CBASE_H/2.0)
+                               self.CBASE_H/2.0 + TOL) 
         gt2_base_lscrew_nut.Placement.Rotation = FreeCAD.Rotation (VY, 90)
         # ------------ hole to reach out the nut hole
-        #M3_2APOT_TOL = mat_cte.NUT_D934_2A[3] +  TOL
-        # Apotheme is: R * cos(30) = 0.866
-        M3_2APOT_TOL = 2* M3_NUT_R_TOL * 0.866 
-        # X is the length: NUT_HOLE_H. Y is the width. M3_2APOT_TOL
-        gt2_base_lscrew_nut2 = addBox (NUT_HOLE_H,
+ 
+        # X is the length: M3NUT_HOLE_H. Y is the width. M3_2APOT_TOL
+        gt2_base_lscrew_nut2 = addBox (M3NUT_HOLE_H,
                                        M3_2APOT_TOL,
-                                       self.CBASE_H/2.0,
+                                       self.CBASE_H/2.0 + TOL,
                                        name + "_base_lscrew_nut2")
         gt2_base_lscrew_nut2.Placement.Base = (
-                              #((self.CBASE_L-M3_HEAD_L) - NUT_HOLE_H)/2.0,
-                                3,
+                              #((self.CBASE_L-M3_HEAD_L) - M3NUT_HOLE_H)/2.0,
+                               NUT_HOLE_EDGSEP,
                                (self.CBASE_W - M3_2APOT_TOL)/2.0 + self.extind,
                                 0)
 
@@ -627,13 +642,113 @@ class Gt2BeltClamp:
 # h: the handler of the freecad object
 h_gt2clamp0 =  Gt2BeltClamp (midblock =0, name="gt2clamp0")
 gt2clamp0 = h_gt2clamp0.CadObj 
-gt2clamp0.Placement.Base = FreeCAD.Vector (CAR_X / 2, 0, CAR_Z)
+BELT_CLAMP_SEP = 2.4
+gt2clamp0.Placement.Base = FreeCAD.Vector (CAR_X / 2, BELT_CLAMP_SEP/2, CAR_Z)
 
 # offset of the base
 gt2clamp0_of = h_gt2clamp0.BaseOffset 
-gt2clamp0_of.Placement.Base = gt2clamp0.Placement.Base
+#gt2clamp0_of.Placement.Base = gt2clamp0.Placement.Base
 
-h_gt2clamp1 =  Gt2BeltClamp (midblock =1, name="gt2clamp1")
+# the other belt clamp
+h_gt2clamp1 =  Gt2BeltClamp (midblock =0, name="gt2clamp1")
+gt2clamp1 = h_gt2clamp1.CadObj 
+gt2clamp1.Placement.Base = FreeCAD.Vector (CAR_X / 2,
+                                         -BELT_CLAMP_SEP/2 - h_gt2clamp1.TotalW,
+                                          CAR_Z)
+
+# offset of the base
+gt2clamp1_of = h_gt2clamp1.BaseOffset 
+#gt2clamp1_of.Placement.Base = gt2clamp1.Placement.Base
+
+#h_gt2clamp1 =  Gt2BeltClamp (midblock =1, name="gt2clamp1")
+
+# --------------------------- Belt Clamp Carriage Rails BCCR
+# they are a part of the lower carriage
+
+# the space between the rods. ROD_DIAM_SPACE is a little bit longer than
+# ROD_DIAM, so it will not touch the rods
+BCCR_Y = ROD_SEP - ROD_DIAM_SPACE
+# how large we want the run of the belt clamp to be, on the X direction
+BCCR_RUN = 15
+# the support of the nut. We take the same dimensions as in the belt clamp
+BCCR_NUT_SUP_X = 2*NUT_HOLE_EDGSEP + M3NUT_HOLE_H
+BCCR_X =  h_gt2clamp1.CBASE_L + BCCR_RUN + BCCR_NUT_SUP_X
+
+bccr_box = addBox (BCCR_X, BCCR_Y, 2 * CAR_Z, "bccr_box")
+bccr_box.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - OUT_SEP +1, -BCCR_Y/2.0,0)
+ 
+bccr_fllt = fillet_len (bccr_box, 2*CAR_Z, CAR_FLLT_R, "bccr_fllt")
+
+# Make the length of the gt2clamp_of (offset of the base) to cut the whole
+# Belt Clamp Carriage Rail. Make it as long as the BCCR
+
+gt2clamp0_of.Dir = (BCCR_X - BCCR_NUT_SUP_X + 1, 0 , 0)
+gt2clamp0_of.Placement.Base = FreeCAD.Vector (
+                                   # leaving the space for the nut
+                                   bccr_box.Placement.Base.x + BCCR_NUT_SUP_X,
+                                   gt2clamp0.Placement.Base.y,
+                                   gt2clamp0.Placement.Base.z )
+
+gt2clamp1_of.Dir = (BCCR_X - BCCR_NUT_SUP_X + 1, 0 , 0)
+gt2clamp1_of.Placement.Base = FreeCAD.Vector (
+                                   # leaving the space for the nut
+                                   bccr_box.Placement.Base.x + BCCR_NUT_SUP_X,
+                                   gt2clamp1.Placement.Base.y,
+                                   gt2clamp1.Placement.Base.z )
+
+
+h_bccr_nuthole0 = NutHole (nut_r  = M3_NUT_R_TOL,
+                           nut_h  = M3NUT_HOLE_H,
+                           # + TOL to have a little bit more room for the nut
+                           hole_h = h_gt2clamp0.CBASE_H/2.0 + TOL, 
+                           name   = "bccr_nuthole0",
+                           extra  = 1,
+                           # the height of the nut on the X axis
+                           x_nut_h = 1,
+                           cx = 0, # not centered on x
+                           cy = 1, # centered on y, on the center of the hexagon
+                           holedown = 0)
+
+bccr_nuthole0 = h_bccr_nuthole0.CadObj
+
+bccr_nuthole0.Placement.Base = FreeCAD.Vector (
+                         bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
+                         gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0,
+                         # minus TOL because the hole is on top
+                         CAR_Z + h_gt2clamp0.CBASE_H/2.0 - TOL)
+
+                         
+              
+
+"""
+# ------------ hole for a nut, also M3, for the leadscrew 
+bccr_nut0 = doc.addObject("Part::Prism", "bccr_nut0")
+bccr_nut0.Polygon = 6
+bccr_nut0.Circumradius = M3_NUT_R_TOL
+bccr_nut0.Height = M3NUT_HOLE_H 
+bccr_nut0.Placement.Rotation = gt2_base_lscrew.Placement.Rotation 
+bccr_nut0.Placement.Base = FreeCAD.Vector (
+                         bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
+                         gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0,
+                         CARZ + gt2clamp0.CBASE_H/2.0 + TOL)
+        
+# ------------ hole to reach out the nut hole
+# X is the length: M3NUT_HOLE_H. Y is the width. M3_2APOT_TOL
+bccr_nuthole0 = addBox (M3NUT_HOLE_H,
+                        M3_2APOT_TOL,
+                        gt2clamp0.CBASE_H/2.0 + TOL,
+                        "bccr_nuthole0")
+bccr_nuthole0.Placement.Base = (
+       bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
+       gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0 - M3_2APOT_TOL/2.0,
+       CARZ + gt2clamp0.CBASE_H/2.0 + TOL)
+
+     gt2_base_holes_l = [ gt2_base_lscrew,
+                             gt2_base_lscrew_nut,
+                             gt2_base_lscrew_nut2]
+"""
+
+
 
 # --------------------------- Union of all the holes
 

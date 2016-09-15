@@ -227,7 +227,111 @@ def addBoltNut_hole (r_shank,        l_bolt,
     return boltnut
       
   
+# -------------------- NutHole -----------------------------
+# adding a Nut hole (hexagonal) with a prism attached to introduce the nut
+# tolerances are included
+# nut_r : circumradius of the hexagon
+# nut_h : height of the nut, usually larger than the actual nut height, to be
+#         able to introduce it
+# hole_h: the hole height, from the center of the hexagon to the side it will
+#         see light
+# name:   name of the object (string)
+# extra:  1 if you want 1 mm out of the hole, to cut
+# x_nut_h 1 if you want that the nut height to be along the X axis
+#           and the 2*apotheme on the Y axis
+#         0 if you want that the nut height to be along the Y axis
+# cx:     1 if you want the coordinates referenced to the x center of the piece
+#         it can be done because it is a new shape formed from the union
+# cy:     1 if you want the coordinates referenced to the y center of the piece
+# holedown:   0: the z0 is the bottom of the square (hole)
+#             1: the z0 is the center of the hexagon (nut)
+#              it can be done because it is a new shape formed from the union
+#
+#    0               1       
+#       /\              __
+#      |  |            |  |
+#      |  |            |  |
+#      |__|__ z = 0    |  | -- z = 0
+#                       \/
+
+class NutHole ():
+
+    def __init__(self, nut_r, nut_h, hole_h, name,
+                 extra = 1, x_nut_h = 1, cx=0, cy=0, holedown = 0):
+        self.nut_r   = nut_r
+        self.nut_h   = nut_h
+        self.nut_2ap = 2 * nut_r * 0.866    #Apotheme = R * cos (30)
+        self.hole_h  = hole_h
+        self.name    = name
+        self.extra   = extra
+        self.x_nut_h = x_nut_h
+        self.cx      = cx
+        self.cy      = cy
+        self.holedown = holedown
   
+        doc = FreeCAD.ActiveDocument
+        self.doc     = doc
+
+        # the nut
+        nut = doc.addObject("Part::Prism", name + "_nut")
+        nut.Polygon = 6
+        nut.Circumradius = nut_r
+        nut.Height = nut_h
+        self.nutObj  = nut
+
+        if x_nut_h == 1:
+            x_hole = nut_h
+            y_hole = self.nut_2ap
+            nutrot = FreeCAD.Rotation(VY,90)
+            if cx == 1: #centered on X,
+                xpos_nut = - nut_h / 2.0
+            else:
+                xpos_nut = 0
+            if cy == 1: #centered on Y, already is
+                ypos_nut = 0
+            else:
+              # already starting on y=0
+              ypos_nut = self.nut_2ap/2.0
+        else : # nut h is on Y
+            x_hole = self.nut_2ap
+            y_hole = nut_h
+            # the rotation of the nut will be on X
+            # this is a rotation of Yaw and Pitch, because we want to have the
+            # vertex on top, not the face of the hexagonal prism
+            nutrot = FreeCAD.Rotation(90,90,0)
+            if cx == 1: #centered on X, already is
+                xpos_nut = 0
+            else:
+                # move to the half of the apotheme
+                xpos_nut = self.nut_2ap/2.0
+            if cy == 1: #centered on Y, 
+                ypos_nut = - nut_h / 2.0
+            else:
+              # already starting on y=0
+              ypos_nut = 0
+
+        hole = addBox (x_hole, y_hole, hole_h + extra, name + "_hole",
+                     cx = cx, cy = cy)
+        self.holeObj = hole
+
+        if holedown== 1:
+            # the nut will be top
+            zpos_nut = hole_h
+            if extra > 0: # then we will have to bring down the z of the hole
+              hole.Placement.Base =   hole.Placement.Base \
+                                    + FreeCAD.Vector(0,0,-extra)
+        else:
+            zpos_nut = 0
+
+        nut.Placement.Base = FreeCAD.Vector (xpos_nut, ypos_nut, zpos_nut)
+        nut.Placement.Rotation = nutrot
+
+        nuthole =  doc.addObject("Part::Fuse", name)
+        nuthole.Base = nut
+        nuthole.Tool = hole
+        self.CadObj = nuthole
+
+
 
 
 #  ---------------- Fillet on edges of a certain length
