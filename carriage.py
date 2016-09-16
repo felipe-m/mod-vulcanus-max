@@ -516,8 +516,10 @@ class Gt2BeltClamp:
         self.BaseOffset = gt2_baseof
 
         # hole for the leadscrew bolt
+        # the head is longer because it can be inserted deeper into the piece
+        # so a shorter bolt will be needed
         gt2_base_lscrew = addBolt (M3_SHANK_R_TOL, self.CBASE_L,
-                                   M3_HEAD_R_TOL, M3_HEAD_L,
+                                   M3_HEAD_R_TOL, 2.5*M3_HEAD_L,
                                    extra = 1, support = 0,
                                    name= name + "_base_lscrew")
     
@@ -664,18 +666,22 @@ gt2clamp1_of = h_gt2clamp1.BaseOffset
 
 # --------------------------- Belt Clamp Carriage Rails BCCR
 # they are a part of the lower carriage
+# I will put the bolt head on the BCCR not on the moving belt clamp
 
 # the space between the rods. ROD_DIAM_SPACE is a little bit longer than
 # ROD_DIAM, so it will not touch the rods
 BCCR_Y = ROD_SEP - ROD_DIAM_SPACE
 # how large we want the run of the belt clamp to be, on the X direction
-BCCR_RUN = 15
+# M3 DIN912 bolts have thread length of 18mm. So it can't be longer
+BCCR_RUN = 15 
 # the support of the nut. We take the same dimensions as in the belt clamp
-BCCR_NUT_SUP_X = 2*NUT_HOLE_EDGSEP + M3NUT_HOLE_H
+# the nut will be on the moving part
+#BCCR_NUT_SUP_X = 2*NUT_HOLE_EDGSEP + M3NUT_HOLE_H
+BCCR_NUT_SUP_X = NUT_HOLE_EDGSEP 
 BCCR_X =  h_gt2clamp1.CBASE_L + BCCR_RUN + BCCR_NUT_SUP_X
 
 bccr_box = addBox (BCCR_X, BCCR_Y, 2 * CAR_Z, "bccr_box")
-bccr_box.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - OUT_SEP +1, -BCCR_Y/2.0,0)
+bccr_box.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - 0.7*OUT_SEP, -BCCR_Y/2.0,0)
  
 bccr_fllt = fillet_len (bccr_box, 2*CAR_Z, CAR_FLLT_R, "bccr_fllt")
 
@@ -696,6 +702,64 @@ gt2clamp1_of.Placement.Base = FreeCAD.Vector (
                                    gt2clamp1.Placement.Base.y,
                                    gt2clamp1.Placement.Base.z )
 
+# ---- Bottom Hole to be able to see from below
+bccr_bthole0 = addBox (BCCR_X - 2 * NUT_HOLE_EDGSEP,
+                       M3_2APOT_TOL, # to see the nut 
+                       CAR_Z + 2 ,
+                        "bccr_bthole0", cy=1)
+# small fillet, radius 2
+bccr_bthole0_fllt = fillet_len (bccr_bthole0, CAR_Z +2, 2, "bccr_bthole0_fllt")
+bccr_bthole0_fllt.Placement.Base = FreeCAD.Vector (
+                     bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
+                     gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0,
+                     -1)
+
+# ---- the other Bottom Hole to be able to see from below
+bccr_bthole1 = addBox (BCCR_X - 2 * NUT_HOLE_EDGSEP,
+                       M3_2APOT_TOL, # to see the nut 
+                       CAR_Z + 2 ,
+                        "bccr_bthole1", cy=1)
+# small fillet, radius 2
+bccr_bthole1_fllt = fillet_len (bccr_bthole1, CAR_Z +2, 2, "bccr_bthole1_fllt")
+bccr_bthole1_fllt.Placement.Base = FreeCAD.Vector (
+                     bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
+                     gt2clamp1.Placement.Base.y + h_gt2clamp1.TotalW / 2.0,
+                     -1)
+
+# Hole for the bolt
+
+bccr_bolthole0 = addCyl (r = M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
+                         name = "bccr_bolthole0")
+bccr_bolthole0.Placement.Base = FreeCAD.Vector (
+                         bccr_box.Placement.Base.x -1,
+                         gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0,
+                         CAR_Z + h_gt2clamp0.CBASE_H/2.0)
+bccr_bolthole0.Placement.Rotation = FreeCAD.Rotation (VY, 90)
+
+bccr_bolthole1 = addCyl (r = M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
+                         name = "bccr_bolthole1")
+bccr_bolthole1.Placement.Base = FreeCAD.Vector (
+                         bccr_box.Placement.Base.x -1,
+                         gt2clamp1.Placement.Base.y + h_gt2clamp1.TotalW / 2.0,
+                         CAR_Z + h_gt2clamp1.CBASE_H/2.0)
+bccr_bolthole1.Placement.Rotation = FreeCAD.Rotation (VY, 90)
+
+bccr_holes_list = [gt2clamp0_of, gt2clamp1_of,
+                   bccr_bthole0_fllt, bccr_bthole1_fllt, 
+                   bccr_bolthole0, bccr_bolthole1 ]
+
+# union of all the bccr holes
+bccr_holes = doc.addObject("Part::MultiFuse", "bccr_holes")
+bccr_holes.Shapes = bccr_holes_list
+
+bccr_final = doc.addObject("Part::Cut", "bccr_final")
+bccr_final.Base = bccr_fllt
+bccr_final.Tool = bccr_holes
+
+
+
+
+""" No nut hole
 
 h_bccr_nuthole0 = NutHole (nut_r  = M3_NUT_R_TOL,
                            nut_h  = M3NUT_HOLE_H,
@@ -716,6 +780,7 @@ bccr_nuthole0.Placement.Base = FreeCAD.Vector (
                          gt2clamp0.Placement.Base.y + h_gt2clamp0.TotalW / 2.0,
                          # minus TOL because the hole is on top
                          CAR_Z + h_gt2clamp0.CBASE_H/2.0 - TOL)
+"""
 
                          
               
