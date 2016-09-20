@@ -15,7 +15,7 @@ filename = "carriage"
 
 import FreeCAD;
 import Part;
-#import Draft;
+import Draft;
 #import copy;
 #import Mesh;
 
@@ -44,6 +44,8 @@ ROD_DIAM_SPACE = ROD_DIAM + 2
 # Separation between the rods axis (Y dimension)
 ROD_SEP = 50.0
 
+# This separation can be smaller, then OUT_SEP_X maybe shouldn't be relative
+# to OUT_SEP
 OUT_SEP = 14.0  # default distance to the ends
 # On the X axis we need a larger separation because of the extruder size
 OUT_SEP_X = OUT_SEP + 3   
@@ -909,7 +911,14 @@ bccr_box_of = addBox (BCCR_X, BCCR_Y + 2*TOL, 2 * CAR_Z, "bccr_box")
 bccr_box_of.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - 0.7*OUT_SEP_X - TOL,
                                              -BCCR_Y/2.0 - TOL,
                                              0)
-holes_higcar_list.append(bccr_box_of)
+
+"""
+This rotation will not work
+bccr_box_of_clone = Draft.clone(bccr_box_of)
+bccr_box_of_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
+holes_higcar_list.append(bccr_box_of_clone)
+"""
+
 # Taking away a small indent that results from cutting bccr_box_of
 bccr_box_of_clean = addBox (BCCR_X, ROD_SEP, ROD_DIAM_SPACE/2.0,
                             "bccr_box_of_clean")
@@ -917,8 +926,66 @@ bccr_box_of_clean.Placement.Base = FreeCAD.Vector (
                                               CAR_X/2.0 - 0.7*OUT_SEP_X - TOL,
                                              -ROD_SEP/2.0,
                                               CAR_Z)
-holes_higcar_list.append(bccr_box_of_clean)
+# If I fuse them, then I can clone and just rotate. Because the new object
+# will be in absolute position (0,0,0)
+fuse_bccr_box_of = doc.addObject("Part::Fuse", "fuse_bccr_box_of")
+fuse_bccr_box_of.Base = bccr_box_of
+fuse_bccr_box_of.Tool = bccr_box_of_clean
 
+#holes_higcar_list.append(bccr_box_of_clean)
+holes_higcar_list.append(fuse_bccr_box_of)
+
+fuse_bccr_box_of_clone = Draft.clone(fuse_bccr_box_of)
+# I can do this rotation because they have been fused
+fuse_bccr_box_of_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
+holes_higcar_list.append(fuse_bccr_box_of_clone)
+
+# Holes on the higher carriage to make space to introduce the bolts that
+# are used as leadscrews for the belt clamps
+
+# From the center of the circle of the extruders
+higcar_lscrew_hole_x = bccr_box_of_clean.Placement.Base.x - EXTR_SEP/2.0 + 1
+# +1 as tolerance
+higcar_lscrew_hole_y = 2 * M3_HEAD_R + 2
+# +1 as tolerance, +1 tu cut above
+higcar_lscrew_hole_z = CAR_Z / 2.0 + M3_HEAD_R + 1 + 1
+
+higcar_lscrew_hole_pos_x = (  bccr_box_of_clean.Placement.Base.x 
+                            - higcar_lscrew_hole_x +1)
+higcar_lscrew_hole_pos_y = (  BELT_CLAMP_SEP /2.0
+                            + h_gt2clamp1.TotalW/2.0
+                            - higcar_lscrew_hole_y/2.0)
+higcar_lscrew_hole_pos_z = 2 * CAR_Z - higcar_lscrew_hole_z + 1
+
+higcar_lscrew_hole0 = addBox ( higcar_lscrew_hole_x,
+                               higcar_lscrew_hole_y,
+                               higcar_lscrew_hole_z,
+                               "highcar_lscrew_hole0")
+
+higcar_lscrew_hole0.Placement.Base = FreeCAD.Vector (
+                                        higcar_lscrew_hole_pos_x,
+                                        higcar_lscrew_hole_pos_y,
+                                        higcar_lscrew_hole_pos_z)
+
+higcar_lscrew_hole1 = addBox ( higcar_lscrew_hole_x,
+                               higcar_lscrew_hole_y,
+                               higcar_lscrew_hole_z,
+                               "highcar_lscrew_hole1")
+
+higcar_lscrew_hole1.Placement.Base = FreeCAD.Vector (
+                              higcar_lscrew_hole_pos_x,
+                             -higcar_lscrew_hole_pos_y - higcar_lscrew_hole_y,
+                              higcar_lscrew_hole_pos_z)
+
+higcar_lscrew_fuse = doc.addObject("Part::Fuse", "higcar_lscrew_fuse")
+higcar_lscrew_fuse.Base = higcar_lscrew_hole0
+higcar_lscrew_fuse.Tool = higcar_lscrew_hole1
+
+higcar_lscrew_fuse_clone = Draft.clone(higcar_lscrew_fuse)
+higcar_lscrew_fuse_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
+
+holes_higcar_list.append(higcar_lscrew_fuse)
+holes_higcar_list.append(higcar_lscrew_fuse_clone)
 
 # Make the length of the gt2clamp_of (offset of the base) to cut the whole
 # Belt Clamp Carriage Rail. Make it as long as the BCCR
@@ -960,6 +1027,16 @@ bccr_bthole1_fllt.Placement.Base = FreeCAD.Vector (
                      bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
                      gt2clamp1.Placement.Base.y + h_gt2clamp1.TotalW / 2.0,
                      -1)
+# fuse these holes, to be able to clone them and easily rotate them
+
+bccr_bthole_fused = doc.addObject("Part::Fuse", "bccr_bthole_fused")
+bccr_bthole_fused.Base = bccr_bthole0_fllt
+bccr_bthole_fused.Tool = bccr_bthole1_fllt
+
+
+# clone these holes
+bccr_bthole_fused_clone = Draft.clone(bccr_bthole_fused)
+bccr_bthole_fused_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
 
 # Hole for the bolt
 
@@ -984,8 +1061,8 @@ bccr_holes_list = [gt2clamp0_of, gt2clamp1_of,
                    bccr_bolthole0, bccr_bolthole1 ]
 
 # these need to be added also to the lowcarriage
-holes_lowcar_list.append(bccr_bthole0_fllt)
-holes_lowcar_list.append(bccr_bthole1_fllt)
+holes_lowcar_list.append(bccr_bthole_fused)
+holes_lowcar_list.append(bccr_bthole_fused_clone)
 
 # union of all the bccr holes
 bccr_holes = doc.addObject("Part::MultiFuse", "bccr_holes")
@@ -994,6 +1071,9 @@ bccr_holes.Shapes = bccr_holes_list
 bccr_final = doc.addObject("Part::Cut", "bccr_final")
 bccr_final.Base = bccr_fllt
 bccr_final.Tool = bccr_holes
+
+bccr_final_clone = Draft.clone(bccr_final )
+bccr_final_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
 
 
 
@@ -1101,6 +1181,11 @@ lowcar_hole = doc.addObject("Part::Cut", "lowcar_hole")
 lowcar_hole.Base = carlow_box_fllt
 lowcar_hole.Tool = fuse_lowcar_holes
 
+lowcar_bccr_list = [ lowcar_hole, bccr_final, bccr_final_clone]
+lowcar_bccr = doc.addObject("Part::MultiFuse", "lowcar_bccr")
+lowcar_bccr.Shapes = lowcar_bccr_list
+
+
 higcar_hole = doc.addObject("Part::Cut", "higcar_hole")
 higcar_hole.Base = carhig_fuse
 higcar_hole.Tool = fuse_higcar_holes
@@ -1112,6 +1197,12 @@ Part.export([tot_extr_hold_1], filepath + tot_extr_hold_1.Name + ".stl")
 Part.export([tot_extr_hold_1], filepath + tot_extr_hold_1.Name + ".step")
 Part.export([tot_extr_hold_2], filepath + tot_extr_hold_2.Name + ".stl")
 Part.export([tot_extr_hold_2], filepath + tot_extr_hold_2.Name + ".step")
+Part.export([lowcar_bccr], filepath + lowcar_bccr.Name + ".stl")
+Part.export([lowcar_bccr], filepath + lowcar_bccr.Name + ".step")
+Part.export([higcar_hole], filepath + higcar_hole.Name + ".stl")
+Part.export([higcar_hole], filepath + higcar_hole.Name + ".step")
+Part.export([gt2clamp0], filepath + "gt2clamp" + ".stl")
+Part.export([gt2clamp0], filepath + "gt2clamp" + ".step")
 
 
 """
