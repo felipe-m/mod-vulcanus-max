@@ -45,6 +45,8 @@ ROD_DIAM_SPACE = ROD_DIAM + 2
 ROD_SEP = 50.0
 
 OUT_SEP = 14.0  # default distance to the ends
+# On the X axis we need a larger separation because of the extruder size
+OUT_SEP_X = OUT_SEP + 3   
 
 # The piece will hold 2 LME10UU linear bearings, tolerance added
 BEARING_L_TOL = mat_cte.LME10UU_BEARING_L + TOL;
@@ -55,7 +57,7 @@ BEARING_D_TOL = mat_cte.LME10UU_BEARING_D + TOL;
 
 DIST_RODAX_END = BEARING_D_TOL/2.0 + OUT_SEP
 
-CAR_X = 2.0 * BEARING_L_TOL + 3 * OUT_SEP
+CAR_X = 2.0 * BEARING_L_TOL + 3 * OUT_SEP_X
 
 #BEARING_SEP = CAR_X - 2 * BEARING_L_TOL
 
@@ -155,16 +157,15 @@ extr_holder_holes_list = []
 extr_holder_holes_list.append (extr_rings_1)
 extr_holder_holes_list.append (extr_rings_2)
 
-fuse_extr_holder_holes = doc.addObject("Part::MultiFuse", 
-                                       "fuse_extr_holder_holes")
-fuse_extr_holder_holes.Shapes = extr_holder_holes_list
 
 # --------------------- extruder holders -----------------------------
 
 # Extruder separation between axis + 2*radius (each side) + 2* extruder space
-# to the end
-EXTR_HOLD_X = EXTR_SEP + EXTR_WIDTH + 2.0*EXTR_SPACE 
+# to the end. We need to add some space for the nut holes: 8
+EXTR_HOLD_X = 2* EXTR_WIDTH + 3.0*EXTR_SPACE + 10
 # a little bigger so the heat sink can pass through
+# the half of the total, because there are 2 extruder holders, one on the 
+# + side of Y, and the other on the negative
 EXTR_HOLD_Y = EXTR_RAD + 2* TOL 
 EXTR_HOLD_Z = EXTR_IN_H + EXTR_OUTUP_H + EXTR_OUTBOT_H - EXTR_BOT_OUT
 
@@ -173,8 +174,127 @@ extr_hold_2 = addBox(EXTR_HOLD_X, EXTR_HOLD_Y, EXTR_HOLD_Z, "extr_hold_2")
 extr_hold_2_pos = FreeCAD.Vector(-EXTR_HOLD_X/2.0,-EXTR_HOLD_Y,0)
 extr_hold_2.Placement = FreeCAD.Placement (extr_hold_2_pos, V0ROT, V0) 
 
+# ------------------  Tabs to attach both extruder holders
+extr_hold_1_app_list = [extr_hold_1]
+extr_hold_1_cut_list = []
+extr_hold_2_app_list = [extr_hold_2]
+extr_hold_2_cut_list = []
+
+# Tab Dimensions:
+# this is the distance from the exterior circle to the end:
+# (EXTR_HOLD_X - EXTR_SEP - EXTR_OUT_D)/2.0
+extr_hold_tab_x = ((EXTR_HOLD_X - EXTR_SEP - EXTR_OUT_D)/2.0)/ 1.25
+extr_hold_tab_y = EXTR_HOLD_Y
+extr_hold_tab_z = EXTR_HOLD_Z / 2.0
+
+# for the Y Axis: +1: the union to superimpose, the cut to cut away
+# On the others, for cutting we need +1, but not for adding
+# --- tab 0
+extr_hold_tab0 = addBox (extr_hold_tab_x,
+                         extr_hold_tab_y+1,
+                         extr_hold_tab_z - TOL/2,
+                         "extr_hold_tab0")
+extr_hold_tab0_hole = addBox (extr_hold_tab_x+1+TOL,
+                              extr_hold_tab_y+1,
+                              extr_hold_tab_z + 1 + TOL/2,
+                              "extr_hold_tab0_hole")
+extr_hold_tab0.Placement.Base = FreeCAD.Vector( -(EXTR_HOLD_X / 2.0),
+                                                 -1,
+                                                 EXTR_HOLD_Z / 2.0 + TOL/2)
+extr_hold_2_app_list.append(extr_hold_tab0)
+extr_hold_tab0_hole.Placement.Base = FreeCAD.Vector( -(EXTR_HOLD_X / 2.0)-1,
+                                                 0,
+                                                 EXTR_HOLD_Z / 2.0 - TOL/2)
+extr_hold_1_cut_list.append(extr_hold_tab0_hole)
+
+# --- tab 1
+extr_hold_tab1 = addBox (extr_hold_tab_x,
+                         extr_hold_tab_y+1,
+                         extr_hold_tab_z - TOL/2,
+                         "extr_hold_tab1")
+extr_hold_tab1_hole = addBox (extr_hold_tab_x+1+TOL,
+                              extr_hold_tab_y+1,
+                              extr_hold_tab_z+1 + TOL/2,
+                              "extr_hold_tab1_hole")
+extr_hold_tab1.Placement.Base = FreeCAD.Vector( -(EXTR_HOLD_X / 2.0),
+                                                 -extr_hold_tab_y,
+                                                 0)
+extr_hold_1_app_list.append(extr_hold_tab1)
+extr_hold_tab1_hole.Placement.Base = FreeCAD.Vector( -(EXTR_HOLD_X / 2.0)-1,
+                                                     -(extr_hold_tab_y+1),
+                                                     -1)
+extr_hold_2_cut_list.append(extr_hold_tab1_hole)
+
+# --- tab 2
+extr_hold_tab2 = addBox (extr_hold_tab_x,
+                         extr_hold_tab_y+1,
+                         extr_hold_tab_z - TOL/2,
+                         "extr_hold_tab2")
+extr_hold_tab2_hole = addBox (extr_hold_tab_x+1+TOL,
+                              extr_hold_tab_y+1,
+                              extr_hold_tab_z+1 +TOL/2,
+                              "extr_hold_tab2_hole")
+extr_hold_tab2.Placement.Base = FreeCAD.Vector(
+                                       (EXTR_HOLD_X / 2.0)- extr_hold_tab_x,
+                                        -extr_hold_tab_y,
+                                        EXTR_HOLD_Z / 2.0 + TOL/2)
+extr_hold_1_app_list.append(extr_hold_tab2)
+extr_hold_tab2_hole.Placement.Base = FreeCAD.Vector( 
+                                     (EXTR_HOLD_X / 2.0)- extr_hold_tab_x - TOL,
+                                      -(extr_hold_tab_y+1),
+                                      EXTR_HOLD_Z / 2.0 - TOL/2)
+extr_hold_2_cut_list.append(extr_hold_tab2_hole)
+
+# --- tab 3
+extr_hold_tab3 = addBox (extr_hold_tab_x,
+                         extr_hold_tab_y+1,
+                         extr_hold_tab_z - TOL/2,
+                         "extr_hold_tab3")
+extr_hold_tab3_hole = addBox (extr_hold_tab_x+1+TOL,
+                              extr_hold_tab_y+1,
+                              extr_hold_tab_z+1+TOL/2,
+                              "extr_hold_tab3_hole")
+extr_hold_tab3.Placement.Base = FreeCAD.Vector( 
+                                       (EXTR_HOLD_X / 2.0)- extr_hold_tab_x,
+                                        -1,
+                                         0)
+extr_hold_2_app_list.append(extr_hold_tab3)
+extr_hold_tab3_hole.Placement.Base = FreeCAD.Vector( 
+                                     (EXTR_HOLD_X / 2.0)- extr_hold_tab_x - TOL,
+                                      0,
+                                      -1)
+extr_hold_1_cut_list.append(extr_hold_tab3_hole)
 
 
+extr_hold1_holes_joint = doc.addObject("Part::MultiFuse", 
+                                       "extr_hold1_holes_joint")
+extr_hold1_holes_joint.Shapes = extr_hold_1_cut_list
+
+extr_hold1_tabs_joint = doc.addObject("Part::MultiFuse", 
+                                       "extr_hold1_tabs_joint")
+extr_hold1_tabs_joint.Shapes = extr_hold_1_app_list
+
+extr_hold1_joint = doc.addObject("Part::Cut", 
+                                 "extr_hold1_joint")
+extr_hold1_joint.Base = extr_hold1_tabs_joint
+extr_hold1_joint.Tool = extr_hold1_holes_joint
+
+
+extr_hold2_holes_joint = doc.addObject("Part::MultiFuse", 
+                                       "extr_hold2_holes_joint")
+extr_hold2_holes_joint.Shapes = extr_hold_2_cut_list
+
+extr_hold2_tabs_joint = doc.addObject("Part::MultiFuse", 
+                                       "extr_hold2_tabs_joint")
+extr_hold2_tabs_joint.Shapes = extr_hold_2_app_list
+
+extr_hold2_joint = doc.addObject("Part::Cut", 
+                                 "extr_hold2_joint")
+extr_hold2_joint.Base = extr_hold2_tabs_joint
+extr_hold2_joint.Tool = extr_hold2_holes_joint
+
+""" 
+Now we don't fillet them because they are going to be printed from that end
 
 # ------------------ fillet the extruder holder 1
 extr_hold_1_fillist = []
@@ -206,26 +326,25 @@ extr_hold_2_fllt.Edges = extr_hold_2_fillist
 if extr_hold_2.ViewObject != None:
   extr_hold_2.ViewObject.Visibility = False
 
-# cut the holes for the extruder
+"""
 
-tot_extr_hold_1 = doc.addObject("Part::Cut", "tot_extr_hold_1")
-tot_extr_hold_1.Base = extr_hold_1_fllt
-tot_extr_hold_1.Tool = fuse_extr_holder_holes
-        
-tot_extr_hold_2 = doc.addObject("Part::Cut", "tot_extr_hold_2")
-tot_extr_hold_2.Base = extr_hold_2_fllt
-tot_extr_hold_2.Tool = fuse_extr_holder_holes
+
         
 
-# --------------------- the total box of the carriage ------
-total_box = addBox(CAR_X, CAR_Y, CAR_Z, "total_box", cx = 1, cy=1)
+# --------------------- the boxes of the carriage ------
+carlow_box = addBox(CAR_X, CAR_Y, CAR_Z, "carlow_box", cx = 1, cy=1)
 #   Fillet on the vertical edges
-tot_box_fllt = fillet_len (total_box, CAR_Z, CAR_FLLT_R, "tot_box_fllt")
+carlow_box_fllt = fillet_len (carlow_box, CAR_Z, CAR_FLLT_R, "carlow_box_fllt")
+
+carhig_box = addBox(CAR_X, CAR_Y, CAR_Z, "carhig_box", cx = 1, cy=1)
+#   Fillet on the vertical edges
+carhig_box_fllt = fillet_len (carhig_box, CAR_Z, CAR_FLLT_R, "carhig_box_fllt")
+carhig_box_fllt.Placement.Base = FreeCAD.Vector (0,0, CAR_Z)
 
 
-# ------------------- Inner rectangle hole for the extruder holder
+# ------------------- Inner rectangle hole for the lower extruder holder
 
-INRECT_X = EXTR_HOLD_X + TOL
+INRECT_X = EXTR_HOLD_X + 2*TOL # 2* TOL, for each side
 # x2 because the holder is half on Y, and since they are 2, also the tolerances
 INRECT_Y = 2.0 * (EXTR_HOLD_Y + TOL)
 inrect = addBox (INRECT_X, INRECT_Y, CAR_Z+2, "inrect")
@@ -236,11 +355,33 @@ inrect.Placement = FreeCAD.Placement(inrect_pos, V0ROT, V0)
 
 # fillet the inner rectangles. The radius has - tolerance because it is the
 # outer
-inrect_fllt = fillet_len (inrect, CAR_Z+2, EXTR_HOLD_FLLT_R-TOL, "inrect_fllt")
+# we don't fillet it, because the extruder holders aren't either
+#inrect_fllt = fillet_len (inrect, CAR_Z+2, EXTR_HOLD_FLLT_R-TOL, "inrect_fllt")
 
-holes_list = []
-holes_list.append(inrect_fllt)
+# holes for the lower carriage
+holes_lowcar_list = []
+#holes_list.append(inrect_fllt)
+holes_lowcar_list.append(inrect)
+# holes for the higher carriage
+holes_higcar_list = []
 
+# rectangle for the upper carriage, because the extruder holder is a little
+# bit lower
+
+if (CAR_Z - EXTR_HOLD_Z) > TOL :
+    extrhold_higcar = addBox (EXTR_HOLD_X,
+                              2*EXTR_HOLD_Y,
+                              CAR_Z - EXTR_HOLD_Z -TOL +1,
+                              "extrhold_higcar")
+    extrhold_higcar.Placement.Base = FreeCAD.Vector (-EXTR_HOLD_X/2.0,
+                                                     -EXTR_HOLD_Y,
+                                                      EXTR_HOLD_Z+TOL)
+    carhig_fuse = doc.addObject("Part::Fuse", "carghig_fuse")
+    carhig_fuse.Base = carhig_box_fllt
+    carhig_fuse.Tool = extrhold_higcar
+else: # if it is less than the tolerance, we don't do it
+    carhig_fuse = carhig_box_fllt
+ 
 
 # ------------------- Rod holes
 
@@ -256,8 +397,10 @@ rod_n.Placement = FreeCAD.Placement (rod_n_pos,
                                      FreeCAD.Rotation(VY,90),
                                      V0)
 
-holes_list.append(rod_n)
-holes_list.append(rod_p)
+holes_lowcar_list.append(rod_n)
+holes_lowcar_list.append(rod_p)
+holes_higcar_list.append(rod_n)
+holes_higcar_list.append(rod_p)
 
 # -------------------- Bearing holes
 
@@ -287,9 +430,9 @@ bearing_4.Placement = FreeCAD.Placement (bearing_4_pos,
 for i in range (4):
     bearing = addCyl(BEARING_D_TOL/2.0, BEARING_L_TOL, "bearing_" + str(i))
     if i % 2 == 0: # is even, 0, 2
-      x_bearing = OUT_SEP/2.0
+      x_bearing = OUT_SEP_X/2.0
     else:
-      x_bearing = - OUT_SEP/2.0 - BEARING_L_TOL
+      x_bearing = - OUT_SEP_X/2.0 - BEARING_L_TOL
     if i == 0 or i == 1:
       y_bearing = ROD_SEP/2.0
     else:
@@ -298,46 +441,121 @@ for i in range (4):
     bearing.Placement = FreeCAD.Placement (bearing_pos,
                                            FreeCAD.Rotation(VY,90),
                                            V0)
-    holes_list.append(bearing)
+    holes_lowcar_list.append(bearing)
+    holes_higcar_list.append(bearing)
 
+
+#  -----------------------holes for the upper carriage,
+# ---------------- to be able to introduce the filament
+# radius is +1, to make it a little bit larger
+higcar_fil_hole_z = 2*CAR_Z - EXTR_HOLD_Z + 2 
+higcar_fil_hole1 = addCyl (r=(EXTR_OUT_D/2.0) +1, h=higcar_fil_hole_z,
+                          name="higcar_fil_hole1");
+higcar_fil_hole2 = addCyl (r=(EXTR_OUT_D/2.0) +1, h=higcar_fil_hole_z,
+                          name="higcar_fil_hole2");
+higcar_fil_hole1.Placement.Base = FreeCAD.Vector ( EXTR_SEP/2.0,
+                                                   0,
+                                                   EXTR_HOLD_Z-1)
+higcar_fil_hole2.Placement.Base = FreeCAD.Vector (-EXTR_SEP/2.0,
+                                                   0,
+                                                   EXTR_HOLD_Z-1)
+
+holes_higcar_list.append(higcar_fil_hole1)
+holes_higcar_list.append(higcar_fil_hole2)
 
 # ---------------------- adding M3 bolts
 
+# bolt to attach both extruder holders
 
-m3bolts = []
-for i in range (0, 7):
-  # create 6 bolt holes
-  bolt = addBoltNut_hole (r_shank  = M3_SHANK_R_TOL,
-                          l_bolt   = 2 * CAR_Z,
-                          r_head   = M3_HEAD_R_TOL,
-                          l_head   = M3_HEAD_L,
-                          r_nut    = M3_NUT_R_TOL,
-                          l_nut    = M3_NUT_L,
-                          hex_head = 0, extra=1, name="m3_bolt_hole")
-  if i == 0:  ## this will be centered
-    m3bolt_x = 0
+# a M3 DIN 912 bolt with L=20 is going to be used,
+# the total is 20 + l_head = 20+3= 23
+# the total hole is 2*EXTR_HOLD_Y = 2*11,8 = 23,6
+# So we make the l_nut = M3_NUT_L + (2*EXTR_HOLD_Y - 23)
+
+bolt20m3_length = 20 + M3_HEAD_L
+if (2*EXTR_HOLD_Y < bolt20m3_length):
+    print ("Error in extruder holder Y dimension: " + str(2*EXTR_HOLD_Y) 
+           + " have to be larger than bolt length: " + str(bolt20m3_length) )
+boltextr_lnut = M3_NUT_L + (2*EXTR_HOLD_Y - bolt20m3_length)
+
+
+boltextr = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+                            l_bolt    = 2 * EXTR_HOLD_Y,
+                            r_head    = M3_HEAD_R_TOL,
+                            l_head    = M3_HEAD_L,
+                            r_nut     = M3_NUT_R_TOL,
+                            l_nut     = boltextr_lnut,
+                            hex_head  = 0, extra=1,
+                            supp_head = 1, supp_nut=1,
+                            headdown  = 1, name="m3_extrbolt_hole")
+
+boltextr.Placement.Base = FreeCAD.Vector (0, EXTR_HOLD_Y, EXTR_HOLD_Z/2)
+boltextr.Placement.Rotation = FreeCAD.Rotation (VX, 90)
+extr_holder_holes_list.append (boltextr)
+
+# center bolts: only for upper carriage and extruder holder
+m3bolts_center = [] 
+for i in range (0, 2): # 0 and 1
+    # create 2 central bolt holes
+    boltcen = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+                            l_bolt    = 2 * CAR_Z,
+                            r_head    = M3_HEAD_R_TOL,
+                            l_head    = M3_HEAD_L,
+                            r_nut     = M3_NUT_R_TOL,
+                            l_nut     = M3_NUT_L,
+                            hex_head  = 0, extra=1,
+                            # extruder holder printed vertically, nosupport nut
+                            supp_head = 1, supp_nut=0,
+                            headdown  = 0, name="m3_bolt_hole")
+    if i == 0:
+        m3bolt_x = (EXTR_HOLD_X / 2.0) - (extr_hold_tab_x/2.0)
+    else:
+        # the previous value, but negative
+        m3bolt_x =  - m3bolt_x
     m3bolt_y = 0
-  else:
+    # rotation to have more space on the X axis. Get the apotheme
+    #bolt_rot = FreeCAD.Rotation (VZ, 30)
+    bolt_rot = FreeCAD.Rotation (VZ, 0) # no rotation
+    bolt_pos = FreeCAD.Vector(m3bolt_x, m3bolt_y, 0)
+    boltcen.Placement = FreeCAD.Placement (bolt_pos, bolt_rot, V0)
+    m3bolts_center.append (boltcen)
+
+extr_holder_holes_list.extend (m3bolts_center)
+holes_higcar_list.extend (m3bolts_center)
+
+m3bolts_sides  = [] # for lower and upper carriage
+for i in range (1, 7):  # 1 to 6
+    boltsid = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+                            l_bolt    = 2 * CAR_Z,
+                            r_head    = M3_HEAD_R_TOL,
+                            l_head    = M3_HEAD_L,
+                            r_nut     = M3_NUT_R_TOL,
+                            l_nut     = M3_NUT_L,
+                            hex_head  = 0, extra=1,
+                            supp_head = 1, supp_nut=1,
+                            headdown  = 0, name="m3_bolt_hole")
+
     if i < 4 : # on positive Y
-      m3bolt_y = CAR_Y/2.0 - OUT_SEP/2.0
+        m3bolt_y = CAR_Y/2.0 - OUT_SEP/2.0
     else:
-      m3bolt_y = - (CAR_Y/2.0 - OUT_SEP/2.0)
+        m3bolt_y = - (CAR_Y/2.0 - OUT_SEP/2.0)
     if i % 3 == 1:
-      m3bolt_x = CAR_X/2.0 - OUT_SEP/2.0
+        m3bolt_x = CAR_X/2.0 - OUT_SEP_X/2.0
     elif i % 3 == 2:
-      m3bolt_x = 0
+        m3bolt_x = 0
     else:
-      m3bolt_x = -(CAR_X/2.0 - OUT_SEP/2.0)
+        m3bolt_x = -(CAR_X/2.0 - OUT_SEP_X/2.0)
+    m3bolts_sides.append (boltsid)
+    bolt_rot = FreeCAD.Rotation (VZ, 0) # no rotation
 
-  bolt_pos = FreeCAD.Vector(m3bolt_x, m3bolt_y, 0)
-  upsidedown = FreeCAD.Rotation (VX, 180)
-  bolt.Placement = FreeCAD.Placement (bolt_pos, upsidedown, V0)
-  m3bolts.append (bolt)
+    bolt_pos = FreeCAD.Vector(m3bolt_x, m3bolt_y, 0)
+    boltsid.Placement = FreeCAD.Placement (bolt_pos, bolt_rot, V0)
 
-  # substract the bolt holes to the carriage
-  # use extend instead of append, so the m3bolts is not appended as a list
-  # but appended each element
-  holes_list.extend (m3bolts)
+# list to substract the bolt holes to the lower carriage
+# use extend instead of append, so the m3bolts is not appended as a list
+# but appended each element
+holes_lowcar_list.extend (m3bolts_sides)
+holes_higcar_list.extend (m3bolts_sides)
 
 
 
@@ -681,9 +899,26 @@ BCCR_NUT_SUP_X = NUT_HOLE_EDGSEP
 BCCR_X =  h_gt2clamp1.CBASE_L + BCCR_RUN + BCCR_NUT_SUP_X
 
 bccr_box = addBox (BCCR_X, BCCR_Y, 2 * CAR_Z, "bccr_box")
-bccr_box.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - 0.7*OUT_SEP, -BCCR_Y/2.0,0)
- 
+bccr_box.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - 0.7*OUT_SEP_X,
+                                          -BCCR_Y/2.0,
+                                          0)
 bccr_fllt = fillet_len (bccr_box, 2*CAR_Z, CAR_FLLT_R, "bccr_fllt")
+
+# a similar bccr_box, but bigger (with offset) to cut it to the higcar
+bccr_box_of = addBox (BCCR_X, BCCR_Y + 2*TOL, 2 * CAR_Z, "bccr_box")
+bccr_box_of.Placement.Base = FreeCAD.Vector (CAR_X/2.0 - 0.7*OUT_SEP_X - TOL,
+                                             -BCCR_Y/2.0 - TOL,
+                                             0)
+holes_higcar_list.append(bccr_box_of)
+# Taking away a small indent that results from cutting bccr_box_of
+bccr_box_of_clean = addBox (BCCR_X, ROD_SEP, ROD_DIAM_SPACE/2.0,
+                            "bccr_box_of_clean")
+bccr_box_of_clean.Placement.Base = FreeCAD.Vector (
+                                              CAR_X/2.0 - 0.7*OUT_SEP_X - TOL,
+                                             -ROD_SEP/2.0,
+                                              CAR_Z)
+holes_higcar_list.append(bccr_box_of_clean)
+
 
 # Make the length of the gt2clamp_of (offset of the base) to cut the whole
 # Belt Clamp Carriage Rail. Make it as long as the BCCR
@@ -747,6 +982,10 @@ bccr_bolthole1.Placement.Rotation = FreeCAD.Rotation (VY, 90)
 bccr_holes_list = [gt2clamp0_of, gt2clamp1_of,
                    bccr_bthole0_fllt, bccr_bthole1_fllt, 
                    bccr_bolthole0, bccr_bolthole1 ]
+
+# these need to be added also to the lowcarriage
+holes_lowcar_list.append(bccr_bthole0_fllt)
+holes_lowcar_list.append(bccr_bthole1_fllt)
 
 # union of all the bccr holes
 bccr_holes = doc.addObject("Part::MultiFuse", "bccr_holes")
@@ -814,19 +1053,66 @@ bccr_nuthole0.Placement.Base = (
 """
 
 
+# --------------------------- Union and Cut of all the holes
+# --------------------- extruder holder holes --------------------
 
-# --------------------------- Union of all the holes
 
-fuse_holes = doc.addObject("Part::MultiFuse", "fuse_holes")
-fuse_holes.Shapes = holes_list
+fuse_extr_holder_holes = doc.addObject("Part::MultiFuse", 
+                                       "fuse_extr_holder_holes")
+fuse_extr_holder_holes.Shapes = extr_holder_holes_list
 
-# --------------------------- Cut all the holes
+# cut the holes for the extruder holders
 
-carr_hole = doc.addObject("Part::Cut", "carr_hole")
-carr_hole.Base = tot_box_fllt
-carr_hole.Tool = fuse_holes
+tot_extr_hold_1 = doc.addObject("Part::Cut", "tot_extr_hold_1")
+#tot_extr_hold_1.Base = extr_hold_1_fllt
+tot_extr_hold_1.Base = extr_hold1_joint
+tot_extr_hold_1.Tool = fuse_extr_holder_holes
+        
+tot_extr_hold_2 = doc.addObject("Part::Cut", "tot_extr_hold_2")
+#tot_extr_hold_2.Base = extr_hold_2_fllt
+tot_extr_hold_2.Base = extr_hold2_joint
+tot_extr_hold_2.Tool = fuse_extr_holder_holes
+
+
+""" the refinement is not working
+# refine the shape
+tot_extr_hold_1ref = doc.addObject("Part::Feature", "tot_extr_hold1_ref")
+tot_extr_hold_1ref.Shape = tot_extr_hold_1.Shape.removeSplitter()
+tot_extr_hold_2ref = doc.addObject("Part::Feature", "tot_extr_hold2_ref")
+tot_extr_hold_2ref.Shape = tot_extr_hold_2.Shape.removeSplitter()
+
+# Export them to .stl and .step
+Part.export([tot_extr_hold_1ref], filepath + tot_extr_hold_1.Name + ".stl")
+Part.export([tot_extr_hold_1ref], filepath + tot_extr_hold_1.Name + ".step")
+Part.export([tot_extr_hold_2ref], filepath + tot_extr_hold_2.Name + ".stl")
+Part.export([tot_extr_hold_2ref], filepath + tot_extr_hold_2.Name + ".step")
+"""
+
+# --------------------- Lower carriage holes --------------------
+fuse_lowcar_holes = doc.addObject("Part::MultiFuse", "fuse_lowcar_holes")
+fuse_lowcar_holes.Shapes = holes_lowcar_list
+# --------------------- Higher carriage holes --------------------
+fuse_higcar_holes = doc.addObject("Part::MultiFuse", "fuse_higcar_holes")
+fuse_higcar_holes.Shapes = holes_higcar_list
+
+# --------------------------- Cut the holes lower carriage holes
+
+lowcar_hole = doc.addObject("Part::Cut", "lowcar_hole")
+lowcar_hole.Base = carlow_box_fllt
+lowcar_hole.Tool = fuse_lowcar_holes
+
+higcar_hole = doc.addObject("Part::Cut", "higcar_hole")
+higcar_hole.Base = carhig_fuse
+higcar_hole.Tool = fuse_higcar_holes
 
 doc.recompute()
+
+# Export to .stl and .step
+Part.export([tot_extr_hold_1], filepath + tot_extr_hold_1.Name + ".stl")
+Part.export([tot_extr_hold_1], filepath + tot_extr_hold_1.Name + ".step")
+Part.export([tot_extr_hold_2], filepath + tot_extr_hold_2.Name + ".stl")
+Part.export([tot_extr_hold_2], filepath + tot_extr_hold_2.Name + ".step")
+
 
 """
 doc.saveAs(filepath + filename + ".FCStd");

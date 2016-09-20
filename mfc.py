@@ -61,10 +61,11 @@ def addCyl (r, h, name):
    support: 1 if you want to include a triangle between the shank and the head
               to support the shank and not building the head on the air
               using mat_cte.LAYER3D_H
+   headdown: 1 if the head is down. 0 if it is up
 """
 
 def addBolt (r_shank, l_bolt, r_head, l_head,
-             hex_head = 0, extra=1, support=1, name="bolt"):
+             hex_head = 0, extra=1, support=1, headdown = 1, name="bolt"):
 
     # we have to bring the active document
     doc = FreeCAD.ActiveDocument
@@ -78,57 +79,71 @@ def addBolt (r_shank, l_bolt, r_head, l_head,
     elements.append (shank)
     # head:
     if hex_head == 0:
-      head =  doc.addObject("Part::Cylinder", name + "_head")
-      head.Radius = r_head
+        head =  doc.addObject("Part::Cylinder", name + "_head")
+        head.Radius = r_head
     else:
-      head =  doc.addObject("Part::Prism", name + "_head")
-      head.Polygon = 6
-      head.Circumradius = r_head
+        head =  doc.addObject("Part::Prism", name + "_head")
+        head.Polygon = 6
+        head.Circumradius = r_head
 
     head.Height = l_head + extra
-    head.Placement = FreeCAD.Placement(pos, V0ROT, V0)
+    if headdown == 1:
+        zposhead = -extra
+    else:
+        zposhead = l_bolt - l_head
+    poshead =  FreeCAD.Vector(0,0,zposhead)
+    head.Placement.Base = poshead
     elements.append (head)
     # support for the shank:
     if support==1 and mat_cte.LAYER3D_H > 0:
-      sup1 = doc.addObject("Part::Prism", name + "_sup1")
-      sup1.Polygon = 3
-      sup1.Circumradius = r_shank * 2
-      # we could put it just on top of the head, but since we are going to 
-      # make an union, we put it from the bottom (no need to include extra)
-      # sup1.Height = mat_cte.LAYER3D_H
-      # pos1 = FreeCAD.Vector(0,0,l_head)
-      # rot30z = FreeCAD.Rotation(VZ,30)
-      # sup1.Placement = FreeCAD.Placement(pos1, rot30z, V0)
-      sup1.Height = l_head + mat_cte.LAYER3D_H
-      # rotation make only make sense for hexagonal head, but it doesn't matter
-      # for rounded head
-      rot30z = FreeCAD.Rotation(VZ,30)
-      sup1.Placement = FreeCAD.Placement(V0, rot30z, V0)
-      # take vertex away:
-      if hex_head == 0:
-        sup1away = doc.addObject("Part::Cylinder", name + "_sup1away")
-        sup1away.Radius = r_head
-      else:
-        sup1away = doc.addObject("Part::Prism", name + "_sup1away")
-        sup1away.Polygon = 6
-        sup1away.Circumradius = r_head
-      # again, we take all the height
-      sup1away.Height =  l_head + mat_cte.LAYER3D_H
-      sup1away.Placement = FreeCAD.Placement(V0, V0ROT, V0)
-      sup1cut = doc.addObject("Part::Common", "sup1cut")
-      sup1cut.Base = sup1
-      sup1cut.Tool = sup1away
-      elements.append (sup1cut)
-      # another support
-      # 1.15 is the relationship between the Radius and the Apothem
-      # of the hexagon: sqrt(3)/2 . I make it slightly smaller
-      sup2 = doc.addObject("Part::Prism", name + "_sup2")
-      sup2.Polygon = 6
-      sup2.Circumradius = r_shank * 1.15
-      sup2.Height = l_head + 2* mat_cte.LAYER3D_H
-      elements.append (sup2)
-
-
+        sup1 = doc.addObject("Part::Prism", name + "_sup1")
+        sup1.Polygon = 3
+        sup1.Circumradius = r_shank * 2
+        # we could put it just on top of the head, but since we are going to 
+        # make an union, we put it from the bottom (no need to include extra)
+        # sup1.Height = mat_cte.LAYER3D_H
+        # pos1 = FreeCAD.Vector(0,0,l_head)
+        # rot30z = FreeCAD.Rotation(VZ,30)
+        # sup1.Placement = FreeCAD.Placement(pos1, rot30z, V0)
+        sup1.Height = l_head + mat_cte.LAYER3D_H
+        # rotation make only make sense for hexagonal head, but it doesn't
+        # matter for rounded head
+        rot30z = FreeCAD.Rotation(VZ,30)
+        if headdown == 1:
+            zposheadsup1 = 0
+        else:
+            zposheadsup1 = l_bolt - l_head - mat_cte.LAYER3D_H
+        sup1.Placement.Base = FreeCAD.Vector(0,0,zposheadsup1)
+        sup1.Placement.Rotation = rot30z
+        # take vertex away:
+        if hex_head == 0:
+            sup1away = doc.addObject("Part::Cylinder", name + "_sup1away")
+            sup1away.Radius = r_head
+        else:
+            sup1away = doc.addObject("Part::Prism", name + "_sup1away")
+            sup1away.Polygon = 6
+            sup1away.Circumradius = r_head
+        # again, we take all the height
+        sup1away.Height =  l_head + mat_cte.LAYER3D_H
+        sup1away.Placement.Base = sup1.Placement.Base
+        sup1cut = doc.addObject("Part::Common", "sup1cut")
+        sup1cut.Base = sup1
+        sup1cut.Tool = sup1away
+        elements.append (sup1cut)
+        # another support
+        # 1.15 is the relationship between the Radius and the Apothem
+        # of the hexagon: sqrt(3)/2 . I make it slightly smaller
+        sup2 = doc.addObject("Part::Prism", name + "_sup2")
+        sup2.Polygon = 6
+        sup2.Circumradius = r_shank * 1.15
+        sup2.Height = l_head + 2* mat_cte.LAYER3D_H
+        if headdown == 1:
+            zposheadsup2 = 0
+        else:
+            zposheadsup2 = l_bolt - l_head - 2* mat_cte.LAYER3D_H
+        sup2.Placement.Base = FreeCAD.Vector(0,0,zposheadsup2)
+        elements.append (sup2)
+  
     # union of elements
     bolt =  doc.addObject("Part::MultiFuse", name)
     bolt.Shapes = elements
@@ -169,7 +184,7 @@ def addBoltNut_hole (r_shank,        l_bolt,
                      r_nut,          l_nut,
                      hex_head = 0,   extra=1,
                      supp_head=1,    supp_nut=1,
-                     name="bolt"):
+                     headdown=1,     name="bolt"):
 
 
     # we have to bring the active document
@@ -182,45 +197,57 @@ def addBoltNut_hole (r_shank,        l_bolt,
                      hex_head = hex_head,
                      extra    = extra,
                      support  = supp_head,
+                     headdown = headdown,
                      name     = name + "_bolt")
 
     nut = doc.addObject("Part::Prism", name + "_nut")
     nut.Polygon = 6
     nut.Circumradius = r_nut
     nut.Height = l_nut + extra
-    pos = FreeCAD.Vector (0, 0, l_bolt - l_nut)
+    if headdown == 1:
+        pos = FreeCAD.Vector (0, 0, l_bolt - l_nut)
+    else:
+        pos = FreeCAD.Vector (0, 0, -extra)
     nut.Placement = FreeCAD.Placement(pos, V0ROT, V0)
     elements.append (bolt)
     elements.append (nut)
     # support for the nut
     if supp_nut == 1 and mat_cte.LAYER3D_H > 0:
-      supnut1 = doc.addObject("Part::Prism", name + "_nutsup1")
-      supnut1.Polygon = 3
-      supnut1.Circumradius = r_shank * 2
-      supnut1.Height = l_nut + mat_cte.LAYER3D_H
-      pos_supnut1 = FreeCAD.Vector (0, 0, l_bolt - l_nut - mat_cte.LAYER3D_H)
-      rot30z = FreeCAD.Rotation(VZ,30)
-      supnut1.Placement = FreeCAD.Placement(pos_supnut1, rot30z, V0)
-      # take vertex away:
-      supnut1away = doc.addObject("Part::Prism", name + "_supnut1away")
-      supnut1away.Polygon = 6
-      supnut1away.Circumradius = r_nut
-      supnut1away.Height =  supnut1.Height
-      supnut1away.Placement = FreeCAD.Placement(pos_supnut1, V0ROT, V0)
-      supnut1cut = doc.addObject("Part::Common", "supnut1_cut")
-      supnut1cut.Base = supnut1
-      supnut1cut.Tool = supnut1away
-      elements.append (supnut1cut)
-      # the other support
-      # 1.15 is the relationship between the Radius and the Apothem
-      # of the hexagon: sqrt(3)/2 . I make it slightly smaller
-      supnut2 = doc.addObject("Part::Prism", name + "_supnut2")
-      supnut2.Polygon = 6
-      supnut2.Circumradius = r_shank * 1.15
-      supnut2.Height = l_nut + 2* mat_cte.LAYER3D_H
-      pos_supnut2 = FreeCAD.Vector (0, 0, l_bolt - l_nut - 2*mat_cte.LAYER3D_H)
-      supnut2.Placement = FreeCAD.Placement(pos_supnut2, V0ROT, V0)
-      elements.append (supnut2)
+        supnut1 = doc.addObject("Part::Prism", name + "_nutsup1")
+        supnut1.Polygon = 3
+        supnut1.Circumradius = r_shank * 2
+        supnut1.Height = l_nut + mat_cte.LAYER3D_H
+        if headdown == 1:
+            pos_supnut1 = FreeCAD.Vector (0, 0,
+                                          l_bolt - l_nut - mat_cte.LAYER3D_H)
+        else:
+            pos_supnut1 = V0
+        rot30z = FreeCAD.Rotation(VZ,30)
+        supnut1.Placement = FreeCAD.Placement(pos_supnut1, rot30z, V0)
+        # take vertex away:
+        supnut1away = doc.addObject("Part::Prism", name + "_supnut1away")
+        supnut1away.Polygon = 6
+        supnut1away.Circumradius = r_nut
+        supnut1away.Height =  supnut1.Height
+        supnut1away.Placement = FreeCAD.Placement(pos_supnut1, V0ROT, V0)
+        supnut1cut = doc.addObject("Part::Common", "supnut1_cut")
+        supnut1cut.Base = supnut1
+        supnut1cut.Tool = supnut1away
+        elements.append (supnut1cut)
+        # the other support
+        # 1.15 is the relationship between the Radius and the Apothem
+        # of the hexagon: sqrt(3)/2 . I make it slightly smaller
+        supnut2 = doc.addObject("Part::Prism", name + "_supnut2")
+        supnut2.Polygon = 6
+        supnut2.Circumradius = r_shank * 1.15
+        supnut2.Height = l_nut + 2* mat_cte.LAYER3D_H
+        if headdown == 1:
+            pos_supnut2 = FreeCAD.Vector(0,0,
+                                         l_bolt - l_nut - 2*mat_cte.LAYER3D_H)
+        else:
+            pos_supnut2 = V0
+        supnut2.Placement = FreeCAD.Placement(pos_supnut2, V0ROT, V0)
+        elements.append (supnut2)
 
     boltnut = doc.addObject("Part::MultiFuse", "boltnut")
     boltnut.Shapes = elements
