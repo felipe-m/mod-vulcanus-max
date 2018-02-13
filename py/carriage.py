@@ -1,3 +1,15 @@
+# ----------------------------------------------------------------------------
+# -- Carriage
+# -- Core XY printer
+# -- Central carriage where the extruders are attached
+# ----------------------------------------------------------------------------
+# -- (c) Felipe Machado
+# -- Area of Electronics. Rey Juan Carlos University (urjc.es)
+# -- October-2016
+# ----------------------------------------------------------------------------
+# --- LGPL Licence
+# ----------------------------------------------------------------------------
+
 # to execute from the FreeCAD console:
 # execfile ("F:/urjc/proyectos/2015_impresora3d/vulcanus_max/cad/carriage.py");
 # execfile ("C:/Users/felipe/urjc/proyectos/2015_impresora3d/vulcanus_max/cad/carriage.py");
@@ -13,20 +25,34 @@ filepath = "C:/Users/felipe/urjc/proyectos/2015_impresora3d/vulcanus_max/cad/"
 # name of the file
 filename = "carriage"
 
+import os
+import sys
+
 import FreeCAD;
 import Part;
 import Draft;
 #import copy;
 #import Mesh;
 
+# to get the current directory. Freecad has to be executed from the same
+# directory this file is
+filepath = os.getcwd()
+
+# to get the components
+# In FreeCAD can be added: Preferences->General->Macro->Macro path
+sys.path.append(filepath)
+sys.path.append(filepath + '/' + '../comps')
+
 doc = FreeCAD.newDocument();
 
-import mat_cte  # import material constants and other constants
-import mfc      # import my functions for freecad
+#import mat_cte  # name changed to kcom
+import kcomp  # import material constants and other constants
+import fcfun      # import my functions for freecad
+import beltcl      # import belt clamp objects
 
-from mfc import V0, VX, VY, VZ, V0ROT, addBox, addCyl, fillet_len
-from mfc import addBolt, addBoltNut_hole, NutHole
-from mat_cte import TOL
+from fcfun import V0, VX, VY, VZ, V0ROT, addBox, addCyl, fillet_len
+from fcfun import addBolt, addBoltNut_hole, NutHole
+from kcomp import TOL
 
 """ ------------------- dimensions: --------------------------
 """
@@ -36,7 +62,8 @@ from mat_cte import TOL
 CAR_FLLT_R = 4.0
 
 # The diameter of the rods is 10
-ROD_DIAM = 10.0;
+ROD_Di = 10;
+ROD_DIAM = float (ROD_Di);
 # Add 2 mm, because it is just to leave space for the rod
 # and hold the linear bearings
 ROD_DIAM_SPACE = ROD_DIAM + 2
@@ -51,8 +78,8 @@ OUT_SEP = 14.0  # default distance to the ends
 OUT_SEP_X = OUT_SEP + 3   
 
 # The piece will hold 2 LME10UU linear bearings, tolerance added
-BEARING_L_TOL = mat_cte.LME10UU_BEARING_L + TOL;
-BEARING_D_TOL = mat_cte.LME10UU_BEARING_D + TOL;
+BEARING_L_TOL = kcomp.LMEUU_L[ROD_Di] + TOL;
+BEARING_D_TOL = kcomp.LMEUU_D[ROD_Di] + TOL;
 
 # Distance between the rod axis to the end (it has to be larger than the 
 # radius of the bearing
@@ -78,12 +105,12 @@ EXTR_SPACE = 3.0 # Space between the extruders
 EXTR_SPACE_OUT = 10.0 # Space to the end
 EXTR_SEP = EXTR_WIDTH + EXTR_SPACE
 
-EXTR_IN_D     = mat_cte.E3DV6_IN_DIAM  + TOL
+EXTR_IN_D     = kcomp.E3DV6_IN_DIAM  + TOL
 
-EXTR_IN_H     = mat_cte.E3DV6_IN_H - TOL 
-EXTR_OUT_D    = mat_cte.E3DV6_OUT_DIAM + TOL
-EXTR_OUTUP_H  = mat_cte.E3DV6_OUTUP_H 
-EXTR_OUTBOT_H = mat_cte.E3DV6_OUTBOT_H + TOL
+EXTR_IN_H     = kcomp.E3DV6_IN_H - TOL 
+EXTR_OUT_D    = kcomp.E3DV6_OUT_DIAM + TOL
+EXTR_OUTUP_H  = kcomp.E3DV6_OUTUP_H 
+EXTR_OUTBOT_H = kcomp.E3DV6_OUTBOT_H + TOL
 
 EXTR_HOLD_FLLT_R = 2.0
 
@@ -91,30 +118,7 @@ EXTR_HOLD_FLLT_R = 2.0
 # of the carriage
 EXTR_BOT_OUT = 1.0  
 
-# constant related to bolts
-BOLT_R = 3
-M3_HEAD_R = mat_cte.D912_HEAD_D[BOLT_R] / 2.0
-M3_HEAD_L = mat_cte.D912_HEAD_L[BOLT_R] + TOL
-M3_HEAD_R_TOL = M3_HEAD_R + TOL/2.0 # smaller TOL, because it's small
-M3_SHANK_R_TOL = BOLT_R / 2.0 + TOL/2.0
-
-M3_NUT_R = mat_cte.NUT_D934_D[BOLT_R] / 2.0
-M3_NUT_L = mat_cte.NUT_D934_L[BOLT_R] + TOL
-#  1.5 TOL because diameter values are minimum, so they may be larger
-M3_NUT_R_TOL = M3_NUT_R + 1.5*TOL
-XTR_BOT_OUT = 1.0  
-
-# constant related to inserted nuts. For example, to make a leadscrew
-# The nut height multiplier to have enough space to introduce it
-NUT_HOLE_MULT_H = 1.8 
-M3NUT_HOLE_H = NUT_HOLE_MULT_H * M3_NUT_L  
 NUT_HOLE_EDGSEP = 3 # separation from the  edge
-
-#M3_2APOT_TOL = mat_cte.NUT_D934_2A[3] +  TOL
-# Apotheme is: R * cos(30) = 0.866
-M3_2APOT_TOL = 2* M3_NUT_R_TOL * 0.866
-
-
 
 # Outer up ring
 extr_outup = addCyl (r=EXTR_OUT_D/2.0, h=EXTR_OUTUP_H, name="extr_outup");
@@ -472,20 +476,20 @@ holes_higcar_list.append(higcar_fil_hole2)
 # a M3 DIN 912 bolt with L=20 is going to be used,
 # the total is 20 + l_head = 20+3= 23
 # the total hole is 2*EXTR_HOLD_Y = 2*11,8 = 23,6
-# So we make the l_nut = M3_NUT_L + (2*EXTR_HOLD_Y - 23)
+# So we make the l_nut = kcomp.M3_NUT_L + (2*EXTR_HOLD_Y - 23)
 
-bolt20m3_length = 20 + M3_HEAD_L
+bolt20m3_length = 20 + kcomp.M3_HEAD_L
 if (2*EXTR_HOLD_Y < bolt20m3_length):
     print ("Error in extruder holder Y dimension: " + str(2*EXTR_HOLD_Y) 
            + " have to be larger than bolt length: " + str(bolt20m3_length) )
-boltextr_lnut = M3_NUT_L + (2*EXTR_HOLD_Y - bolt20m3_length)
+boltextr_lnut = kcomp.M3_NUT_L + (2*EXTR_HOLD_Y - bolt20m3_length)
 
 
-boltextr = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+boltextr = addBoltNut_hole (r_shank   = kcomp.M3_SHANK_R_TOL,
                             l_bolt    = 2 * EXTR_HOLD_Y,
-                            r_head    = M3_HEAD_R_TOL,
-                            l_head    = M3_HEAD_L,
-                            r_nut     = M3_NUT_R_TOL,
+                            r_head    = kcomp.M3_HEAD_R_TOL,
+                            l_head    = kcomp.M3_HEAD_L,
+                            r_nut     = kcomp.M3_NUT_R_TOL,
                             l_nut     = boltextr_lnut,
                             hex_head  = 0, extra=1,
                             supp_head = 1, supp_nut=1,
@@ -499,12 +503,12 @@ extr_holder_holes_list.append (boltextr)
 m3bolts_center = [] 
 for i in range (0, 2): # 0 and 1
     # create 2 central bolt holes
-    boltcen = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+    boltcen = addBoltNut_hole (r_shank   = kcomp.M3_SHANK_R_TOL,
                             l_bolt    = 2 * CAR_Z,
-                            r_head    = M3_HEAD_R_TOL,
-                            l_head    = M3_HEAD_L,
-                            r_nut     = M3_NUT_R_TOL,
-                            l_nut     = M3_NUT_L,
+                            r_head    = kcomp.M3_HEAD_R_TOL,
+                            l_head    = kcomp.M3_HEAD_L,
+                            r_nut     = kcomp.M3_NUT_R_TOL,
+                            l_nut     = kcomp.M3_NUT_L,
                             hex_head  = 0, extra=1,
                             # extruder holder printed vertically, nosupport nut
                             supp_head = 1, supp_nut=0,
@@ -527,12 +531,12 @@ holes_higcar_list.extend (m3bolts_center)
 
 m3bolts_sides  = [] # for lower and upper carriage
 for i in range (1, 7):  # 1 to 6
-    boltsid = addBoltNut_hole (r_shank   = M3_SHANK_R_TOL,
+    boltsid = addBoltNut_hole (r_shank   = kcomp.M3_SHANK_R_TOL,
                             l_bolt    = 2 * CAR_Z,
-                            r_head    = M3_HEAD_R_TOL,
-                            l_head    = M3_HEAD_L,
-                            r_nut     = M3_NUT_R_TOL,
-                            l_nut     = M3_NUT_L,
+                            r_head    = kcomp.M3_HEAD_R_TOL,
+                            l_head    = kcomp.M3_HEAD_L,
+                            r_nut     = kcomp.M3_NUT_R_TOL,
+                            l_nut     = kcomp.M3_NUT_L,
                             hex_head  = 0, extra=1,
                             supp_head = 1, supp_nut=1,
                             headdown  = 0, name="m3_bolt_hole")
@@ -561,353 +565,33 @@ holes_higcar_list.extend (m3bolts_sides)
 
 
 
-# --------------------------- belt clamp and tensioner
-# radius of the cylinder
-"""                           
-          TOPVIEW                    
-                CLAMPBLOCK          
-                    CB             
-                    ____     
-           CB_W  {  XXXX       ___
-           CB_IW {  ____      /   \
- 0,1 or 2: CB_MW {  XXXX      |   |   CCYL: CLAMPCYL 
-           CB_IW {  ____      \___/
-           CB_W  {  XXXX     
-        
-                    CB_L  CS
-
-
-    Y A  (width)
-      |
-      |---> X (length)
-
-  arguments:
-
-  midblock: 0 or 1. It will add a none/single width middle block
-                    In the future I may consider a double middle block (2)
-
-"""
-
-
-class Gt2BeltClamp:
-
-    # space for the 2 belts to clamp them
-    # the GT2 belt is 1.38mm width. 2 together facing teeth will be about 2mm
-    # I make it 2.8mm
-    # Internal Width of the Clamp Block
-    CB_IW = 2.8
-    # Width of the exterior clamp blocks (Y axis)
-    CB_W = 4.0
-    # Length of the clamp blocks (X axis)
-    CB_L = 12.0
-    # GT2 height is 6 mm, making the heigth 8mm
-    C_H = 8.0
-    # GT2 Clamp Cylinder radius
-    CCYL_R = 4.0
-    # separation between the clamp blocks and the clamp cylinder
-    CS = 3.0
-
-
-    """
-    how much the rail is inside
-
-     ________________________________________________    
-    |        
-    |   __________________________
-     \                        ____ CBASERAILIND 
-      |       
-     /  _____ CBASE_RAIL ___
-    |
-    |_________________________ CBASE_WALL _________ CBASE_H
-
-    |-|
-      CBASERAILIND_SIG (it is 45 degrees). SIG: can be + or -
-
-    if midblock > 0 this will be the indentation, 
-    if midblock == 0 it will be outward, like this:
-        _________
-       |         |
-      /           \ 
-     |             |
-      \           /
-       |_________|
-      
-    """
-  
-    # Clamp base
-    CBASE_H = CAR_Z
-    CBASE_L = CB_L + CS + 2*CCYL_R
-    # divides how much is rail and how much is wall
-    # It has to be greater than 1. If it is 1, there is no wall.
-    # if it is 2. Half is wall, half is indent
-    CBASE_RAIL_DIV = 1.6 #2.0
-    CBASE_RAIL = CBASE_H / CBASE_RAIL_DIV # rail for the base
-    # the part that is wall, divided by 2, because one goes at the bottom
-    # and the other on top
-    CBASE_WALL = (CBASE_H - CBASE_RAIL)/2.0 # rail for the base
-    # Indentation, if midblock == 0, the Indentation is negative, which means
-    # it will be outward, otherwise, inward
-    CBASERAILIND = CBASE_RAIL/3.0
-
-    def __init__(self, midblock, name):
-        self.midblock = midblock
-        # Width of the interior/middle clamp blocks
-        self.CB_MW = midblock * self.CB_W
-        if midblock == 0:
-            self.CBASE_W =     self.CB_IW + 2 * self.CB_W 
-            self.CBASERAILIND_SIG = - self.CBASERAILIND 
-            # Since the indentation is outwards, we have to add it
-            self.TotW = self.CBASE_W + 2 *  self.CBASERAILIND
-            # external indent, so all the internal elements have to have this
-            # nternal offset. In Y axis
-            self.extind = self.CBASERAILIND 
-        else:
-            self.CBASE_W = 2 * self.CB_IW + 2 * self.CB_W + self.CB_MW
-            self.CBASERAILIND_SIG = self.CBASERAILIND 
-            # Since the indentation is inward, it is just the base
-            self.TotW = self.CBASE_W 
-            # no external indent, so the internal elements don't have to have 
-            # this internal offset
-            self.extind = 0
-  
-        gt2_clamp_list = []
-        # we make it using points-plane and extrusions
-        #gt2_base =addBox (self.CBASE_L, self.CBASE_W, self.CBASE_H, "gt2_base")
-        gt2_cb_1 = addBox (self.CB_L, self.CB_W, self.C_H+1, name + "_cb1")
-        gt2_cb_1.Placement.Base = FreeCAD.Vector (self.CBASE_L-self.CB_L,
-                                                  self.extind,
-                                                  self.CBASE_H-1)
-        gt2_clamp_list.append (gt2_cb_1)
-        if midblock > 0:
-          gt2_cb_2 = addBox (self.CB_L, self.CB_MW, self.C_H+1, name + "_cb2")
-          gt2_cb_2.Placement.Base = FreeCAD.Vector (self.CBASE_L-self.CB_L,
-		                                   self.CB_W + self.CB_IW + self.extind,
-		                                   self.CBASE_H-1)
-          gt2_clamp_list.append (gt2_cb_2)
-
-        gt2_cb_3 = addBox (self.CB_L, self.CB_W, self.C_H + 1, name + "_cb3")
-        gt2_cb_3.Placement.Base = FreeCAD.Vector (self.CBASE_L-self.CB_L,
-                                        self.CBASE_W - self.CB_W + self.extind,
-		                                self.CBASE_H-1)
-        gt2_clamp_list.append (gt2_cb_3)
- 
-        gt2_cyl = addCyl (self.CCYL_R,  self.C_H + 1, name + "_cyl")
-        gt2_cyl.Placement.Base = FreeCAD.Vector (self.CCYL_R, 
-                                             self.CBASE_W/2 + self.extind,
-                                             self.CBASE_H-1)
-        gt2_clamp_list.append (gt2_cyl)
-
-        # base
-        # calling to the method that gets a list of the points to make 
-        # the polygon of the base
-        #gt2_base_list = self.get_base_list_v()
-        # doing this because the carriage is already printed, so I am going
-        # to make the base smaller to fit. CHANGE to the upper sentence
-        gt2_base_list = self.get_base_list_v(offs_y = -TOL/2, offs_z = - TOL)
-        """
-        gt2_base_plane_yz = Part.makePolygon(gt2_base_list)
-        gt2_base = gt2_base_plane_xy.extrude(FreeCAD.Vector(self.CBASE_L,0,0))
-        """
-        gt2_base_plane_yz = doc.addObject("Part::Polygon",
-                                           name + "base_plane_yz")
-        gt2_base_plane_yz.Nodes = gt2_base_list
-        gt2_base_plane_yz.Close = True
-        gt2_base = doc.addObject("Part::Extrusion",
-                                           name + "extr_base")
-        gt2_base.Base = gt2_base_plane_yz
-        gt2_base.Dir = (self.CBASE_L,0,0)
-        gt2_base.Solid = True
-
-        gt2_clamp_list.append(gt2_base)
-
-        gt2_clamp_basic = doc.addObject("Part::MultiFuse", name + "clamp_base")
-        gt2_clamp_basic.Shapes = gt2_clamp_list
-
-        # creation of the same base, but with a little offset to be able to 
-        # cut the piece where it will be inserted
-        #gt2_baseof_list = self.get_base_list_v(offs_y = TOL, offs_z = TOL/2.0)
-        # CHANGE TO THE UPPER SENTENCE
-        gt2_baseof_list = self.get_base_list_v(offs_y = TOL, offs_z = 0)
-        gt2_baseof_plane_yz = doc.addObject("Part::Polygon",
-                                           name + "_baseof_plane_yz")
-        gt2_baseof_plane_yz.Nodes = gt2_baseof_list
-        gt2_baseof_plane_yz.Close = True
-        gt2_baseof = doc.addObject("Part::Extrusion",
-                                   name + "_baseof")
-        gt2_baseof.Base = gt2_baseof_plane_yz
-        gt2_baseof.Dir = (self.CBASE_L,0,0)
-        gt2_baseof.Solid = True
-
-        self.BaseOffset = gt2_baseof
-
-        # hole for the leadscrew bolt
-        # the head is longer because it can be inserted deeper into the piece
-        # so a shorter bolt will be needed
-        gt2_base_lscrew = addBolt (M3_SHANK_R_TOL, self.CBASE_L,
-                                   M3_HEAD_R_TOL, 2.5*M3_HEAD_L,
-                                   extra = 1, support = 0,
-                                   name= name + "_base_lscrew")
-    
-        gt2_base_lscrew.Placement.Base = FreeCAD.Vector (self.CBASE_L,
-                                                self.CBASE_W/2.0 + self.extind,
-                                                self.CBASE_H/2.0)
-        gt2_base_lscrew.Placement.Rotation = FreeCAD.Rotation (VY, -90)
-
-        # ------------ hole for a nut, also M3, for the leadscrew 
-        gt2_base_lscrew_nut = doc.addObject("Part::Prism", 
-                                            name + "_base_lscrew_nut")
-        gt2_base_lscrew_nut.Polygon = 6
-        gt2_base_lscrew_nut.Circumradius = M3_NUT_R_TOL
-        gt2_base_lscrew_nut.Height = M3NUT_HOLE_H 
-        gt2_base_lscrew_nut.Placement.Rotation = \
-                                      gt2_base_lscrew.Placement.Rotation 
-                  # + TOL so it will be a little bit higher, so more room
-        gt2_base_lscrew_nut.Placement.Base = FreeCAD.Vector (
-                              #(self.CBASE_L-M3_HEAD_L)/2.0 - M3NUT_HOLE_H/2.0,
-                               NUT_HOLE_EDGSEP,
-                               self.CBASE_W/2.0 + self.extind,
-                               self.CBASE_H/2.0 + TOL) 
-        gt2_base_lscrew_nut.Placement.Rotation = FreeCAD.Rotation (VY, 90)
-        # ------------ hole to reach out the nut hole
- 
-        # X is the length: M3NUT_HOLE_H. Y is the width. M3_2APOT_TOL
-        gt2_base_lscrew_nut2 = addBox (M3NUT_HOLE_H,
-                                       M3_2APOT_TOL,
-                                       self.CBASE_H/2.0 + TOL,
-                                       name + "_base_lscrew_nut2")
-        gt2_base_lscrew_nut2.Placement.Base = (
-                              #((self.CBASE_L-M3_HEAD_L) - M3NUT_HOLE_H)/2.0,
-                               NUT_HOLE_EDGSEP,
-                               (self.CBASE_W - M3_2APOT_TOL)/2.0 + self.extind,
-                                0)
-
-        gt2_base_holes_l = [ gt2_base_lscrew,
-                             gt2_base_lscrew_nut,
-                             gt2_base_lscrew_nut2]
-
-        # fuse the holes
-        gt2_clamp_holes = doc.addObject("Part::MultiFuse", name + "_clamp_hole")
-        gt2_clamp_holes.Shapes = gt2_base_holes_l
-        # Substract the holes 
-        gt2_clamp = doc.addObject("Part::Cut", name)
-        gt2_clamp.Base = gt2_clamp_basic
-        gt2_clamp.Tool = gt2_clamp_holes
-
-        self.CadObj = gt2_clamp
-
-    # --------------------------------------------------------------------
-    # obtains the list of vectors for the base of the clamp
-    # offs_y: if zero it takes normal points
-    # offs_z added because it didn't fit
-    # offs_z: if zero it takes normal points
-    #  CBASERAILIND_SIG <0:              CBASERAILIND_SIG > 0
-    #  lv5         _________               ___________
-    #  lv4        |         |             |
-    #  lv3       /           \             \ 
-    #  lv2      |             |             |
-    #  lv1       \           /             / 
-    #  lv0        |_________|             |_
-    #         
-    #
-    #
-    def get_base_list_v(self, offs_y = 0, offs_z = 0):
-
-        if self.CBASERAILIND_SIG < 0:
-            offs_zsig = - offs_z
-        else:
-            offs_zsig =  offs_z
-
-        # Points that make the shape of the base
-        # left side (offs is negative
-        gt2_base_lv00 = FreeCAD.Vector (0,
-                                        0 - offs_y,
-                                        0)
-        # offs_z higher when CBASERAILIND_SIG > 0
-        gt2_base_lv01 = FreeCAD.Vector (0,
-                                        0 - offs_y,
-                                        self.CBASE_WALL + offs_zsig)
-        gt2_base_lv02 = FreeCAD.Vector (
-                                0,
-                                self.CBASERAILIND_SIG - offs_y,
-                                self.CBASE_WALL + self.CBASERAILIND + offs_zsig)
-        # offs_z negative (lower)
-        gt2_base_lv03 = FreeCAD.Vector (0,
-                            self.CBASERAILIND_SIG - offs_y,
-                            self.CBASE_WALL + 2*self.CBASERAILIND - offs_zsig)
-        gt2_base_lv04 = FreeCAD.Vector (0,0 - offs_y,
-                                self.CBASE_WALL + self.CBASE_RAIL - offs_zsig)
-        gt2_base_lv05 = FreeCAD.Vector (0,0 - offs_y,
-                                        self.CBASE_H)
-        # right side (offs_y is positive
-        gt2_base_rv00 = FreeCAD.Vector (0,
-                                        self.CBASE_W + offs_y,
-                                        0)
-        gt2_base_rv01 = FreeCAD.Vector (0,
-                                        self.CBASE_W + offs_y,
-                                        self.CBASE_WALL + offs_zsig)
-        gt2_base_rv02 = FreeCAD.Vector (0,
-                               self.CBASE_W - self.CBASERAILIND_SIG + offs_y,
-                               self.CBASE_WALL + self.CBASERAILIND + offs_zsig)
-        gt2_base_rv03 = FreeCAD.Vector (0,
-                             self.CBASE_W - self.CBASERAILIND_SIG + offs_y,
-                             self.CBASE_WALL + 2*self.CBASERAILIND - offs_zsig)
-        gt2_base_rv04 = FreeCAD.Vector (0,
-                             self.CBASE_W + offs_y,
-                             self.CBASE_WALL + self.CBASE_RAIL - offs_zsig)
-        gt2_base_rv05 = FreeCAD.Vector (0,
-                                        self.CBASE_W + offs_y,
-                                        self.CBASE_H)
-    
-        gt2_base_list = [
-                         gt2_base_lv00,
-                         gt2_base_lv01,
-                         gt2_base_lv02,
-                         gt2_base_lv03,
-                         gt2_base_lv04,
-                         gt2_base_lv05,
-                         gt2_base_rv05,
-                         gt2_base_rv04,
-                         gt2_base_rv03,
-                         gt2_base_rv02,
-                         gt2_base_rv01,
-                         gt2_base_rv00
-                        ]
-
-        # if it is negative, the indentation will be outwards, so we will
-        # make the Y=0 on the most outward point, except for the offs_y
-        # that will be negative when Y=0
-        if self.CBASERAILIND_SIG < 0:
-            addofs = FreeCAD.Vector (0, - self.CBASERAILIND_SIG,0)
-            gt2_base_list = [x + addofs for x in gt2_base_list]
-
-        return gt2_base_list
-    
-# end class Gt2BeltClamp:
-
 
 # ------------------   Belt clamp
 # h: the handler of the freecad object
-h_gt2clamp0 =  Gt2BeltClamp (midblock =0, name="gt2clamp0")
-gt2clamp0 = h_gt2clamp0.CadObj 
+h_gt2clamp0 =  beltcl.Gt2BeltClamp (base_h = CAR_Z,
+                                    midblock =0, name="gt2clamp0")
+gt2clamp0 = h_gt2clamp0.fco # the FreeCad Object 
 BELT_CLAMP_SEP = 2.4
 gt2clamp0.Placement.Base = FreeCAD.Vector (CAR_X / 2, BELT_CLAMP_SEP/2, CAR_Z)
 
 # offset of the base
-gt2clamp0_of = h_gt2clamp0.BaseOffset 
+gt2clamp0_of = h_gt2clamp0.fco_cont 
 #gt2clamp0_of.Placement.Base = gt2clamp0.Placement.Base
 
 # the other belt clamp
-h_gt2clamp1 =  Gt2BeltClamp (midblock =0, name="gt2clamp1")
-gt2clamp1 = h_gt2clamp1.CadObj 
+h_gt2clamp1 =  beltcl.Gt2BeltClamp (base_h = CAR_Z, 
+                                    midblock =0, name="gt2clamp1")
+gt2clamp1 = h_gt2clamp1.fco # the FreeCad Object 
 gt2clamp1.Placement.Base = FreeCAD.Vector (CAR_X / 2,
                                          -BELT_CLAMP_SEP/2 - h_gt2clamp1.TotW,
                                           CAR_Z)
 
 # offset of the base
-gt2clamp1_of = h_gt2clamp1.BaseOffset 
+gt2clamp1_of = h_gt2clamp1.fco_cont 
 #gt2clamp1_of.Placement.Base = gt2clamp1.Placement.Base
 
-#h_gt2clamp1 =  Gt2BeltClamp (midblock =1, name="gt2clamp1")
+#h_gt2clamp1 =  beltcl.Gt2BeltClamp (base_h = CAR_Z,midblock =1,
+#                                    name="gt2clamp1")
 
 # --------------------------- Belt Clamp Carriage Rails BCCR
 # they are a part of the lower carriage
@@ -971,9 +655,9 @@ holes_higcar_list.append(fuse_bccr_box_of_clone)
 # From the center of the circle of the extruders
 higcar_lscrew_hole_x = bccr_box_of_clean.Placement.Base.x - EXTR_SEP/2.0 + 1
 # +1 as tolerance
-higcar_lscrew_hole_y = 2 * M3_HEAD_R + 2
+higcar_lscrew_hole_y = 2 * kcomp.M3_HEAD_R + 2
 # +1 as tolerance, +1 tu cut above
-higcar_lscrew_hole_z = CAR_Z / 2.0 + M3_HEAD_R + 1 + 1
+higcar_lscrew_hole_z = CAR_Z / 2.0 + kcomp.M3_HEAD_R + 1 + 1
 
 higcar_lscrew_hole_pos_x = (  bccr_box_of_clean.Placement.Base.x 
                             - higcar_lscrew_hole_x +1)
@@ -1031,7 +715,7 @@ gt2clamp1_of.Placement.Base = FreeCAD.Vector (
 
 # ---- Bottom Hole to be able to see from below
 bccr_bthole0 = addBox (BCCR_X - 2 * NUT_HOLE_EDGSEP,
-                       M3_2APOT_TOL, # to see the nut 
+                       kcomp.M3_2APOT_TOL, # to see the nut 
                        CAR_Z + 2 ,
                         "bccr_bthole0", cy=1)
 # small fillet, radius 2
@@ -1043,7 +727,7 @@ bccr_bthole0_fllt.Placement.Base = FreeCAD.Vector (
 
 # ---- the other Bottom Hole to be able to see from below
 bccr_bthole1 = addBox (BCCR_X - 2 * NUT_HOLE_EDGSEP,
-                       M3_2APOT_TOL, # to see the nut 
+                       kcomp.M3_2APOT_TOL, # to see the nut 
                        CAR_Z + 2 ,
                         "bccr_bthole1", cy=1)
 # small fillet, radius 2
@@ -1065,7 +749,7 @@ bccr_bthole_fused_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
 
 # Hole for the bolt
 
-bccr_bolthole0 = addCyl (r = M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
+bccr_bolthole0 = addCyl (r = kcomp.M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
                          name = "bccr_bolthole0")
 bccr_bolthole0.Placement.Base = FreeCAD.Vector (
                          bccr_box.Placement.Base.x -1,
@@ -1073,7 +757,7 @@ bccr_bolthole0.Placement.Base = FreeCAD.Vector (
                          CAR_Z + h_gt2clamp0.CBASE_H/2.0)
 bccr_bolthole0.Placement.Rotation = FreeCAD.Rotation (VY, 90)
 
-bccr_bolthole1 = addCyl (r = M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
+bccr_bolthole1 = addCyl (r = kcomp.M3_SHANK_R_TOL, h = NUT_HOLE_EDGSEP + 2,
                          name = "bccr_bolthole1")
 bccr_bolthole1.Placement.Base = FreeCAD.Vector (
                          bccr_box.Placement.Base.x -1,
@@ -1105,7 +789,7 @@ bccr_final_clone.Placement.Rotation = FreeCAD.Rotation (VZ,180)
 
 """ No nut hole
 
-h_bccr_nuthole0 = NutHole (nut_r  = M3_NUT_R_TOL,
+h_bccr_nuthole0 = NutHole (nut_r  = kcomp.M3_NUT_R_TOL,
                            nut_h  = M3NUT_HOLE_H,
                            # + TOL to have a little bit more room for the nut
                            hole_h = h_gt2clamp0.CBASE_H/2.0 + TOL, 
@@ -1117,7 +801,7 @@ h_bccr_nuthole0 = NutHole (nut_r  = M3_NUT_R_TOL,
                            cy = 1, # centered on y, on the center of the hexagon
                            holedown = 0)
 
-bccr_nuthole0 = h_bccr_nuthole0.CadObj
+bccr_nuthole0 = h_bccr_nuthole0.fco # the FreeCad Object
 
 bccr_nuthole0.Placement.Base = FreeCAD.Vector (
                          bccr_box.Placement.Base.x + NUT_HOLE_EDGSEP,
@@ -1133,7 +817,7 @@ bccr_nuthole0.Placement.Base = FreeCAD.Vector (
 # ------------ hole for a nut, also M3, for the leadscrew 
 bccr_nut0 = doc.addObject("Part::Prism", "bccr_nut0")
 bccr_nut0.Polygon = 6
-bccr_nut0.Circumradius = M3_NUT_R_TOL
+bccr_nut0.Circumradius = kcomp.M3_NUT_R_TOL
 bccr_nut0.Height = M3NUT_HOLE_H 
 bccr_nut0.Placement.Rotation = gt2_base_lscrew.Placement.Rotation 
 bccr_nut0.Placement.Base = FreeCAD.Vector (
