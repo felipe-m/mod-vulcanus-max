@@ -41,7 +41,8 @@ filepath = os.getcwd()
 # to get the components
 # In FreeCAD can be added: Preferences->General->Macro->Macro path
 sys.path.append(filepath)
-sys.path.append(filepath + '/' + '../comps')
+#sys.path.append(filepath + '/' + '../comps')
+sys.path.append(filepath + '/comps')
 
 doc = FreeCAD.newDocument();
 
@@ -77,8 +78,11 @@ OUT_SEP = 14.0  # default distance to the ends
 # On the X axis we need a larger separation because of the extruder size
 OUT_SEP_X = OUT_SEP + 3   
 
-# The piece will hold 2 LME10UU linear bearings, tolerance added
-BEARING_L_TOL = kcomp.LMEUU_L[ROD_Di] + TOL;
+# The piece will hold 4 LME10UU linear bearings, tolerance added
+# add more tolerance along the length because it was too tight, and it
+# doesn't matter to have more room and if it loose, because it is on the
+# direction of the movement
+BEARING_L_TOL = kcomp.LMEUU_L[ROD_Di] + TOL + 2;
 BEARING_D_TOL = kcomp.LMEUU_D[ROD_Di] + TOL;
 
 # Distance between the rod axis to the end (it has to be larger than the 
